@@ -1,0 +1,11 @@
+build/*
+*.mod
+sysapp.layout
+sysapp.cbp
+src/filelist.h
+cmake-build-debug/CMakeCache.txt
+cmake-build-debug/
+.idea/
+*.wps
+*.elf
+CMakeLists.txt
