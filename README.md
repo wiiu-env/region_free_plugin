@@ -25,9 +25,9 @@ If the auto detection fails, the user needs to enter a region/language on the ti
 The plugin keeps tracks the region/language the user has selected for an title.
 
 Scenario:  
-    - The User has disabled the auto detection and booted a EUR version of Mario Kart 8 in German on their US console.
-    - The User then enables the auto detection and set the default language for EUR titles to English.
-    - The EUR version of Mario Kart 8 will still boot in German. To change the language the user has to disable the auto detection and reboot the title.
+ - The User has disabled the auto detection and booted a EUR version of Mario Kart 8 in German on their US console.
+ - The User then enables the auto detection and set the default language for EUR titles to English.
+ - The EUR version of Mario Kart 8 will still boot in German. To change the language the user has to disable the auto detection and reboot the title.
 
 ## Building using the Dockerfile
 
