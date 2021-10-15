@@ -114,17 +114,17 @@ ON_FUNCTIONS_PATCHED() {
         auto res = real_ACPGetLaunchMetaXml(acpMetaXml);
         if (res >= 0) {
             regionFromXML = acpMetaXml->region;
-            if (acpMetaXml->region == 1) {
+            if (OSGetTitleID() == 0x0005001010040000L || acpMetaXml->region == 1) {
                 DEBUG_FUNCTION_LINE("Set default to JAPAN");
                 gDefaultProductArea = MCP_REGION_JAPAN;
                 gDefaultLanguage = gDefaultLangForJPN;
                 gDefaultCountry = gDefaultCountryForJPN;
-            } else if (acpMetaXml->region == 2) {
+            } else if (OSGetTitleID() == 0x0005001010040100L || acpMetaXml->region == 2) {
                 DEBUG_FUNCTION_LINE("Set default to USA");
                 gDefaultProductArea = MCP_REGION_USA;
                 gDefaultLanguage = gDefaultLangForUSA;
                 gDefaultCountry = gDefaultCountryForUSA;
-            } else if (acpMetaXml->region == 4) {
+            } else if (OSGetTitleID() == 0x0005001010040200L || acpMetaXml->region == 4) {
                 DEBUG_FUNCTION_LINE("Set default to EUR");
                 gDefaultProductArea = MCP_REGION_EUROPE;
                 gDefaultLanguage = gDefaultLangForEUR;
