@@ -274,8 +274,6 @@ void ConfigUtils::displayMenu() {
             // draw buttons
             uint32_t index = 8 + 24 + 8 + 4;
 
-            DEBUG_FUNCTION_LINE("%d", selectedBtn);
-
             DrawUtils::setFontColor(COLOR_TEXT);
             DrawUtils::setFontSize(24);
 

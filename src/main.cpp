@@ -28,7 +28,7 @@ WUPS_PLUGIN_LICENSE("GPL");
 WUPS_USE_WUT_DEVOPTAB();
 WUPS_USE_STORAGE("region_free_plugin");
 
-bool getRealProductArea(MCPRegion* out);
+bool getRealProductArea(MCPRegion *out);
 
 INITIALIZE_PLUGIN() {
     WHBLogUdpInit();
@@ -104,6 +104,24 @@ DECL_FUNCTION(int32_t, ACPGetTitleMetaXmlByDevice, uint32_t titleid_upper, uint3
 }
 
 ON_FUNCTIONS_PATCHED() {
+    MCPRegion real_product_area;
+    auto real_product_area_valid = getRealProductArea(&real_product_area);
+    if(real_product_area_valid){
+        if(real_product_area == MCP_REGION_EUROPE){
+            gDefaultProductArea = MCP_REGION_EUROPE;
+            gDefaultLanguage = gDefaultLangForEUR;
+            gDefaultCountry = gDefaultCountryForEUR;
+        } else if(real_product_area == MCP_REGION_JAPAN){
+            gDefaultProductArea = MCP_REGION_JAPAN;
+            gDefaultLanguage = gDefaultLangForJPN;
+            gDefaultCountry = gDefaultCountryForJPN;
+        }if(real_product_area == MCP_REGION_USA){
+            gDefaultProductArea = MCP_REGION_USA;
+            gDefaultLanguage = gDefaultLangForUSA;
+            gDefaultCountry = gDefaultCountryForUSA;
+        }
+    }
+
     bool forceConfigMenu = false;
     auto *acpMetaXml = (ACPMetaXml *) memalign(0x40, 0x4000);
 
@@ -114,24 +132,28 @@ ON_FUNCTIONS_PATCHED() {
         auto res = real_ACPGetLaunchMetaXml(acpMetaXml);
         if (res >= 0) {
             regionFromXML = acpMetaXml->region;
-            if (OSGetTitleID() == 0x0005001010040000L || acpMetaXml->region == 1) {
-                DEBUG_FUNCTION_LINE("Set default to JAPAN");
-                gDefaultProductArea = MCP_REGION_JAPAN;
-                gDefaultLanguage = gDefaultLangForJPN;
-                gDefaultCountry = gDefaultCountryForJPN;
-            } else if (OSGetTitleID() == 0x0005001010040100L || acpMetaXml->region == 2) {
-                DEBUG_FUNCTION_LINE("Set default to USA");
-                gDefaultProductArea = MCP_REGION_USA;
-                gDefaultLanguage = gDefaultLangForUSA;
-                gDefaultCountry = gDefaultCountryForUSA;
-            } else if (OSGetTitleID() == 0x0005001010040200L || acpMetaXml->region == 4) {
-                DEBUG_FUNCTION_LINE("Set default to EUR");
-                gDefaultProductArea = MCP_REGION_EUROPE;
-                gDefaultLanguage = gDefaultLangForEUR;
-                gDefaultCountry = gDefaultCountryForEUR;
+            if (real_product_area_valid && (regionFromXML & real_product_area) == real_product_area) {
+                gCurrentProductArea = real_product_area;
             } else {
-                DEBUG_FUNCTION_LINE("Unknown area %d, forcing language will be disabled", acpMetaXml->region);
-                forceConfigMenu = true;
+                if (OSGetTitleID() == 0x0005001010040000L || acpMetaXml->region == 1) {
+                    DEBUG_FUNCTION_LINE("Set default to JAPAN");
+                    gDefaultProductArea = MCP_REGION_JAPAN;
+                    gDefaultLanguage = gDefaultLangForJPN;
+                    gDefaultCountry = gDefaultCountryForJPN;
+                } else if (OSGetTitleID() == 0x0005001010040100L || acpMetaXml->region == 2) {
+                    DEBUG_FUNCTION_LINE("Set default to USA");
+                    gDefaultProductArea = MCP_REGION_USA;
+                    gDefaultLanguage = gDefaultLangForUSA;
+                    gDefaultCountry = gDefaultCountryForUSA;
+                } else if (OSGetTitleID() == 0x0005001010040200L || acpMetaXml->region == 4) {
+                    DEBUG_FUNCTION_LINE("Set default to EUR");
+                    gDefaultProductArea = MCP_REGION_EUROPE;
+                    gDefaultLanguage = gDefaultLangForEUR;
+                    gDefaultCountry = gDefaultCountryForEUR;
+                } else {
+                    DEBUG_FUNCTION_LINE("Unknown area %08X, forcing language will be disabled", acpMetaXml->region);
+                    forceConfigMenu = true;
+                }
             }
         } else {
             forceConfigMenu = true;
@@ -147,14 +169,12 @@ ON_FUNCTIONS_PATCHED() {
     gCurrentCountry = gDefaultCountry;
     gCurrentProductArea = gDefaultProductArea;
 
-    MCPRegion real_product_area;
-    if(gPreferSystemSettings && getRealProductArea(&real_product_area)){
-        if((regionFromXML & real_product_area) == real_product_area){
+    if (gPreferSystemSettings && real_product_area_valid) {
+        if ((regionFromXML & real_product_area) == real_product_area) {
             gCurrentProductArea = real_product_area;
 
             auto ucHandle = UCOpen();
-            if(ucHandle >= 0){
-                DEBUG_FUNCTION_LINE("Got UCHandle %08X0", ucHandle);
+            if (ucHandle >= 0) {
                 UCSysConfig sysConfig;
                 memset((void *) &sysConfig, 0, sizeof(sysConfig));
                 uint32_t data = 0xFFFFFFFF;
@@ -164,7 +184,7 @@ ON_FUNCTIONS_PATCHED() {
                 strncpy(sysConfig.name, "cafe.language", 64);
                 int ucRes = real_UCReadSysConfig(ucHandle, 1, &sysConfig);
 
-                if(ucRes >= 0){
+                if (ucRes >= 0) {
                     DEBUG_FUNCTION_LINE("Force default language to system title for own region");
                     gCurrentLanguage = static_cast<Lanuages>(*(uint32_t *) sysConfig.data);
                     gDefaultLanguage = static_cast<Lanuages>(*(uint32_t *) sysConfig.data);
@@ -532,8 +552,8 @@ static const uint64_t
                 },
         };
 
-bool getRealProductArea(MCPRegion* out){
-    if(out == nullptr){
+bool getRealProductArea(MCPRegion *out) {
+    if (out == nullptr) {
         return false;
     }
     auto handle = MCP_Open();
@@ -552,7 +572,7 @@ bool getRealProductArea(MCPRegion* out){
 
 DECL_FUNCTION(uint64_t, _SYSGetSystemApplicationTitleIdByProdArea, SYSTEM_APP_ID param_1, MCPRegion param_2) {
     MCPRegion cur_product_area;
-    if(!getRealProductArea(&cur_product_area)){
+    if (!getRealProductArea(&cur_product_area)) {
         DEBUG_FUNCTION_LINE("Failed to get real region");
         cur_product_area = param_2;
     }
