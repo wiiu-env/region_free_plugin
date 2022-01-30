@@ -3,9 +3,10 @@
 This plugin allows you to launch an title of an other region and / or force a language of an title.
 
 ## Installation
+(`[ENVIRONMENT]` is a placeholder for the actual environment name.)
 
-Load the plugin with the [Wii U Plugin System Backend](https://github.com/wiiu-env/WiiUPluginLoaderBackend) by placing it on the SD Card into the 
-directory `sd:/wiiu/plugin/`
+1. Copy the file `regionfree.wps` into `sd:/wiiu/environments/[ENVIRONMENT]/plugins`.  
+2. Requires the [WiiUPluginLoaderBackend](https://github.com/wiiu-env/WiiUPluginLoaderBackend) in `sd:/wiiu/environments/[ENVIRONMENT]/modules`.
 
 At the first launch with the plugin open the config menu (press ZL, DPAD Down and Minus on the gamepad) and set your default language for each region.
 
