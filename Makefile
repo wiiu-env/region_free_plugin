@@ -22,14 +22,15 @@ WUMS_ROOT := $(DEVKITPRO)/wums
 #-------------------------------------------------------------------------------
 TARGET		:=	regionfree
 BUILD		:=	build
-SOURCES		:=	src
+SOURCES		:=	src \
+				src/utils
 DATA		:=	data
 INCLUDES	:=	src
 
 #-------------------------------------------------------------------------------
 # options for code generation
 #-------------------------------------------------------------------------------
-CFLAGS	:=	-g -Wall -O0 -ffunction-sections \
+CFLAGS	:=	-Wall -O0 -ffunction-sections \
 			$(MACHDEP)
 
 CFLAGS	+=	$(INCLUDE) -D__WIIU__ -D__WUT__ -D__WUPS__ 
@@ -38,6 +39,11 @@ CXXFLAGS	:= $(CFLAGS)
 
 ASFLAGS	:=	-g $(ARCH)
 LDFLAGS	=	-g $(ARCH) $(RPXSPECS) -Wl,-Map,$(notdir $*.map) -T$(WUMS_ROOT)/share/libmappedmemory.ld $(WUPSSPECS)
+
+ifeq ($(DEBUG),1)    
+CXXFLAGS += -DDEBUG -g
+CFLAGS += -DDEBUG -g
+endif
 
 LIBS	:= -lwut -lwups -lmappedmemory -lfreetype -lbz2 -lz -lpng
 

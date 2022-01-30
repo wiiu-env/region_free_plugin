@@ -1,5 +1,4 @@
 #include <wups.h>
-#include <whb/log_udp.h>
 #include <nn/acp.h>
 #include <coreinit/title.h>
 #include <coreinit/mcp.h>
@@ -30,10 +29,6 @@ WUPS_USE_STORAGE("region_free_plugin");
 
 bool getRealProductArea(MCPRegion *out);
 
-INITIALIZE_PLUGIN() {
-    WHBLogUdpInit();
-}
-
 DECL_FUNCTION(int32_t, ACPGetLaunchMetaXml, ACPMetaXml *metaxml) {
     int result = real_ACPGetLaunchMetaXml(metaxml);
     if (metaxml != nullptr) {
@@ -41,7 +36,6 @@ DECL_FUNCTION(int32_t, ACPGetLaunchMetaXml, ACPMetaXml *metaxml) {
     }
     return result;
 }
-
 
 DECL_FUNCTION(int, UCReadSysConfig, int IOHandle, int count, struct UCSysConfig *settings) {
     int result = real_UCReadSysConfig(IOHandle, count, settings);
@@ -72,6 +66,7 @@ ON_APPLICATION_ENDS() {
     gCurrentLanguage = gDefaultLanguage;
     gCurrentCountry = gDefaultCountry;
     gCurrentProductArea = gDefaultProductArea;
+    deinitLogging();
 }
 
 #define CAT_GENERAL_ROOT        "root"
@@ -257,11 +252,10 @@ ON_FUNCTIONS_PATCHED() {
     }
 
     WUPS_CloseStorage();
-
 }
 
 ON_APPLICATION_START() {
-    WHBLogUdpInit();
+    initLogging();
 
     WUPS_OpenStorage();
 
@@ -446,7 +440,6 @@ WUPS_CONFIG_CLOSED() {
     // Save all changes
     WUPS_CloseStorage();
 }
-
 
 DECL_FUNCTION(int, MCP_GetSysProdSettings, int IOHandle, struct MCPSysProdSettings *settings) {
     int result = real_MCP_GetSysProdSettings(IOHandle, settings);
