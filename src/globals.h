@@ -5,15 +5,15 @@
 extern int gForceSettingsEnabled;
 
 enum Lanuages {
-    LANG_JAPANESE = 0,
-    LANG_ENGLISH = 1,
-    LANG_FRANCAIS = 2,
-    LANG_DEUTSCH = 3,
-    LANG_ESPANOL = 5,
-    LANG_ITALIANO = 4,
+    LANG_JAPANESE   = 0,
+    LANG_ENGLISH    = 1,
+    LANG_FRANCAIS   = 2,
+    LANG_DEUTSCH    = 3,
+    LANG_ESPANOL    = 5,
+    LANG_ITALIANO   = 4,
     LANG_NEDERLANDS = 8,
-    LANG_PORTUGUES = 9,
-    LANG_RUSSKI = 10,
+    LANG_PORTUGUES  = 9,
+    LANG_RUSSKI     = 10,
 };
 
 

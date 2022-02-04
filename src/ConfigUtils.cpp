@@ -1,28 +1,28 @@
 #include "ConfigUtils.h"
 
-#include "utils/logger.h"
 #include "DrawUtils.h"
+#include "utils/logger.h"
 
+#include "globals.h"
+#include <coreinit/mcp.h>
+#include <coreinit/screen.h>
+#include <map>
+#include <memory/mappedmemory.h>
+#include <padscore/kpad.h>
 #include <string>
 #include <vector>
-#include <coreinit/screen.h>
-#include <memory/mappedmemory.h>
 #include <vpad/input.h>
-#include <padscore/kpad.h>
-#include <coreinit/mcp.h>
-#include <map>
-#include "globals.h"
 
-#define COLOR_BACKGROUND Color(238, 238, 238, 255)
-#define COLOR_TEXT       Color(51,  51,  51,  255)
-#define COLOR_TEXT2      Color(72,  72,  72,  255)
-#define COLOR_DISABLED   Color(255, 0,   0,   255)
-#define COLOR_BORDER     Color(204, 204, 204, 255)
+#define COLOR_BACKGROUND         Color(238, 238, 238, 255)
+#define COLOR_TEXT               Color(51, 51, 51, 255)
+#define COLOR_TEXT2              Color(72, 72, 72, 255)
+#define COLOR_DISABLED           Color(255, 0, 0, 255)
+#define COLOR_BORDER             Color(204, 204, 204, 255)
 #define COLOR_BORDER_HIGHLIGHTED Color(0x3478e4FF)
-#define COLOR_WHITE      Color(0xFFFFFFFF)
-#define COLOR_BLACK      Color(0, 0, 0, 255)
+#define COLOR_WHITE              Color(0xFFFFFFFF)
+#define COLOR_BLACK              Color(0, 0, 0, 255)
 
-#define MAX_BUTTONS_ON_SCREEN 8
+#define MAX_BUTTONS_ON_SCREEN    8
 
 static uint32_t remapWiiMoteButtons(uint32_t buttons) {
     uint32_t conv_buttons = 0;
@@ -121,14 +121,14 @@ void ConfigUtils::displayMenu() {
     auto selectedBtn = 0;
 
     std::map<MCPRegion, const char *> region_map{
-            {MCP_REGION_JAPAN,  "Japan"},
-            {MCP_REGION_USA,    "USA"},
+            {MCP_REGION_JAPAN, "Japan"},
+            {MCP_REGION_USA, "USA"},
             {MCP_REGION_EUROPE, "Europe"},
     };
 
     std::map<MCPRegion, int32_t> region_map_to_index{
-            {MCP_REGION_JAPAN,  0},
-            {MCP_REGION_USA,    1},
+            {MCP_REGION_JAPAN, 0},
+            {MCP_REGION_USA, 1},
             {MCP_REGION_EUROPE, 2},
     };
 
@@ -143,26 +143,26 @@ void ConfigUtils::displayMenu() {
     DEBUG_FUNCTION_LINE("Current %d", curSelectedRegion);
 
     std::map<Lanuages, const char *> lang_map{
-            {LANG_JAPANESE,   "Japanese"},
-            {LANG_ENGLISH,    "English"},
-            {LANG_FRANCAIS,   "Francais"},
-            {LANG_DEUTSCH,    "Deutsch"},
-            {LANG_ITALIANO,   "Italiano"},
-            {LANG_ESPANOL,    "Espanol"},
+            {LANG_JAPANESE, "Japanese"},
+            {LANG_ENGLISH, "English"},
+            {LANG_FRANCAIS, "Francais"},
+            {LANG_DEUTSCH, "Deutsch"},
+            {LANG_ITALIANO, "Italiano"},
+            {LANG_ESPANOL, "Espanol"},
             {LANG_NEDERLANDS, "Nederlands"},
-            {LANG_PORTUGUES,  "Portugues"},
-            {LANG_RUSSKI,     "Russki"},
+            {LANG_PORTUGUES, "Portugues"},
+            {LANG_RUSSKI, "Russki"},
     };
     std::map<Lanuages, int32_t> lang_map_to_index{
-            {LANG_JAPANESE,   0},
-            {LANG_ENGLISH,    1},
-            {LANG_FRANCAIS,   2},
-            {LANG_DEUTSCH,    3},
-            {LANG_ITALIANO,   4},
-            {LANG_ESPANOL,    5},
+            {LANG_JAPANESE, 0},
+            {LANG_ENGLISH, 1},
+            {LANG_FRANCAIS, 2},
+            {LANG_DEUTSCH, 3},
+            {LANG_ITALIANO, 4},
+            {LANG_ESPANOL, 5},
             {LANG_NEDERLANDS, 6},
-            {LANG_PORTUGUES,  7},
-            {LANG_RUSSKI,     8},
+            {LANG_PORTUGUES, 7},
+            {LANG_RUSSKI, 8},
     };
     std::map<int32_t, Lanuages> lang_index_to_map{
             {0, LANG_JAPANESE},
@@ -179,16 +179,16 @@ void ConfigUtils::displayMenu() {
     auto curSelectedLanguage = gCurrentLanguage;
 
     int32_t curRegionIndex = region_map_to_index[curSelectedRegion];
-    int32_t curLangIndex = lang_map_to_index[curSelectedLanguage];
+    int32_t curLangIndex   = lang_map_to_index[curSelectedLanguage];
 
     while (true) {
         buttonsTriggered = 0;
-        buttonsReleased = 0;
+        buttonsReleased  = 0;
 
         VPADRead(VPAD_CHAN_0, &vpad_data, 1, &vpad_error);
         if (vpad_error == VPAD_READ_SUCCESS) {
             buttonsTriggered = vpad_data.trigger;
-            buttonsReleased = vpad_data.release;
+            buttonsReleased  = vpad_data.release;
         }
 
         for (int i = 0; i < 4; i++) {
@@ -238,7 +238,7 @@ void ConfigUtils::displayMenu() {
                 curRegionIndex = region_map.size() - 1;
             }
             gCurrentProductArea = region_index_to_map[curRegionIndex];
-            curSelectedRegion = gCurrentProductArea;
+            curSelectedRegion   = gCurrentProductArea;
         } else if (selectedBtn == 1) {
             if (buttonsTriggered & VPAD_BUTTON_LEFT) {
                 curLangIndex--;
@@ -253,7 +253,7 @@ void ConfigUtils::displayMenu() {
             if (curLangIndex >= lang_map.size()) {
                 curLangIndex = lang_map.size() - 1;
             }
-            gCurrentLanguage = lang_index_to_map[curLangIndex];
+            gCurrentLanguage    = lang_index_to_map[curLangIndex];
             curSelectedLanguage = gCurrentLanguage;
         }
 
@@ -311,7 +311,6 @@ void ConfigUtils::displayMenu() {
     DrawUtils::beginDraw();
     DrawUtils::clear(COLOR_BLACK);
     DrawUtils::endDraw();
-
 }
 
 void ConfigUtils::openConfigMenu() {
@@ -319,8 +318,8 @@ void ConfigUtils::openConfigMenu() {
 
     uint32_t screen_buf0_size = OSScreenGetBufferSizeEx(SCREEN_TV);
     uint32_t screen_buf1_size = OSScreenGetBufferSizeEx(SCREEN_DRC);
-    void *screenbuffer0 = MEMAllocFromMappedMemoryForGX2Ex(screen_buf0_size, 0x100);
-    void *screenbuffer1 = MEMAllocFromMappedMemoryForGX2Ex(screen_buf1_size, 0x100);
+    void *screenbuffer0       = MEMAllocFromMappedMemoryForGX2Ex(screen_buf0_size, 0x100);
+    void *screenbuffer1       = MEMAllocFromMappedMemoryForGX2Ex(screen_buf1_size, 0x100);
 
     if (!screenbuffer0 || !screenbuffer1) {
         DEBUG_FUNCTION_LINE("Failed to alloc buffers");
@@ -348,7 +347,7 @@ void ConfigUtils::openConfigMenu() {
 
     DrawUtils::deinitFont();
 
-    error_exit:
+error_exit:
 
     if (screenbuffer0) {
         MEMFreeToMappedMemory(screenbuffer0);

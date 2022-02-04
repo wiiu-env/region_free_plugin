@@ -1,22 +1,22 @@
-#include <wups.h>
-#include <nn/acp.h>
-#include <coreinit/title.h>
-#include <coreinit/mcp.h>
-#include <coreinit/userconfig.h>
-#include <coreinit/filesystem.h>
-#include <sysapp/title.h>
-#include <coreinit/thread.h>
-#include "utils/logger.h"
 #include "ConfigUtils.h"
-#include <malloc.h>
-#include <cstdio>
-#include <wups/config/WUPSConfigItemMultipleValues.h>
-#include <map>
-#include <coreinit/screen.h>
-#include <vpad/input.h>
-#include <padscore/kpad.h>
-#include <wups/config/WUPSConfigItemBoolean.h>
 #include "globals.h"
+#include "utils/logger.h"
+#include <coreinit/filesystem.h>
+#include <coreinit/mcp.h>
+#include <coreinit/screen.h>
+#include <coreinit/thread.h>
+#include <coreinit/title.h>
+#include <coreinit/userconfig.h>
+#include <cstdio>
+#include <malloc.h>
+#include <map>
+#include <nn/acp.h>
+#include <padscore/kpad.h>
+#include <sysapp/title.h>
+#include <vpad/input.h>
+#include <wups.h>
+#include <wups/config/WUPSConfigItemBoolean.h>
+#include <wups/config/WUPSConfigItemMultipleValues.h>
 
 WUPS_PLUGIN_NAME("Region Free Plugin");
 WUPS_PLUGIN_DESCRIPTION("Allows the user to load titles from other regions");
@@ -63,29 +63,29 @@ DECL_FUNCTION(int, UCReadSysConfig, int IOHandle, int count, struct UCSysConfig 
 }
 
 ON_APPLICATION_ENDS() {
-    gCurrentLanguage = gDefaultLanguage;
-    gCurrentCountry = gDefaultCountry;
+    gCurrentLanguage    = gDefaultLanguage;
+    gCurrentCountry     = gDefaultCountry;
     gCurrentProductArea = gDefaultProductArea;
     deinitLogging();
 }
 
-#define CAT_GENERAL_ROOT        "root"
-#define CAT_GENERAL_SETTINGS    "general_settings"
-#define CAT_TITLE_SETTINGS      "title_settings"
+#define CAT_GENERAL_ROOT           "root"
+#define CAT_GENERAL_SETTINGS       "general_settings"
+#define CAT_TITLE_SETTINGS         "title_settings"
 
-#define VAL_LANGUAGE            "language"
-#define VAL_COUNTRY             "cntry_reg"
-#define VAL_PRODUCT_AREA        "product_area"
+#define VAL_LANGUAGE               "language"
+#define VAL_COUNTRY                "cntry_reg"
+#define VAL_PRODUCT_AREA           "product_area"
 
-#define VAL_PREFER_SYSTEM_SETTINGS  "prefer_system_settings"
-#define VAL_AUTO_DETECTION      "auto_detection"
-#define VAL_DEFAULT_LANG_EUR    "default_lang_eur"
-#define VAL_DEFAULT_LANG_USA    "default_lang_usa"
-#define VAL_DEFAULT_LANG_JPN    "default_lang_jpn"
+#define VAL_PREFER_SYSTEM_SETTINGS "prefer_system_settings"
+#define VAL_AUTO_DETECTION         "auto_detection"
+#define VAL_DEFAULT_LANG_EUR       "default_lang_eur"
+#define VAL_DEFAULT_LANG_USA       "default_lang_usa"
+#define VAL_DEFAULT_LANG_JPN       "default_lang_jpn"
 
-#define VAL_DEFAULT_COUNTRY_EUR "default_cntry_reg_eur"
-#define VAL_DEFAULT_COUNTRY_USA "default_cntry_reg_usa"
-#define VAL_DEFAULT_COUNTRY_JPN "default_cntry_reg_jpn"
+#define VAL_DEFAULT_COUNTRY_EUR    "default_cntry_reg_eur"
+#define VAL_DEFAULT_COUNTRY_USA    "default_cntry_reg_usa"
+#define VAL_DEFAULT_COUNTRY_JPN    "default_cntry_reg_jpn"
 
 extern "C" void ACPInitialize();
 extern "C" void ACPFinalize();
@@ -101,24 +101,25 @@ DECL_FUNCTION(int32_t, ACPGetTitleMetaXmlByDevice, uint32_t titleid_upper, uint3
 ON_FUNCTIONS_PATCHED() {
     MCPRegion real_product_area;
     auto real_product_area_valid = getRealProductArea(&real_product_area);
-    if(real_product_area_valid){
-        if(real_product_area == MCP_REGION_EUROPE){
+    if (real_product_area_valid) {
+        if (real_product_area == MCP_REGION_EUROPE) {
             gDefaultProductArea = MCP_REGION_EUROPE;
-            gDefaultLanguage = gDefaultLangForEUR;
-            gDefaultCountry = gDefaultCountryForEUR;
-        } else if(real_product_area == MCP_REGION_JAPAN){
+            gDefaultLanguage    = gDefaultLangForEUR;
+            gDefaultCountry     = gDefaultCountryForEUR;
+        } else if (real_product_area == MCP_REGION_JAPAN) {
             gDefaultProductArea = MCP_REGION_JAPAN;
-            gDefaultLanguage = gDefaultLangForJPN;
-            gDefaultCountry = gDefaultCountryForJPN;
-        }if(real_product_area == MCP_REGION_USA){
+            gDefaultLanguage    = gDefaultLangForJPN;
+            gDefaultCountry     = gDefaultCountryForJPN;
+        }
+        if (real_product_area == MCP_REGION_USA) {
             gDefaultProductArea = MCP_REGION_USA;
-            gDefaultLanguage = gDefaultLangForUSA;
-            gDefaultCountry = gDefaultCountryForUSA;
+            gDefaultLanguage    = gDefaultLangForUSA;
+            gDefaultCountry     = gDefaultCountryForUSA;
         }
     }
 
     bool forceConfigMenu = false;
-    auto *acpMetaXml = (ACPMetaXml *) memalign(0x40, 0x4000);
+    auto *acpMetaXml     = (ACPMetaXml *) memalign(0x40, 0x4000);
 
     memset(acpMetaXml, 0, sizeof(ACPMetaXml));
     auto regionFromXML = 0;
@@ -133,18 +134,18 @@ ON_FUNCTIONS_PATCHED() {
                 if (OSGetTitleID() == 0x0005001010040000L || acpMetaXml->region == 1) {
                     DEBUG_FUNCTION_LINE("Set default to JAPAN");
                     gDefaultProductArea = MCP_REGION_JAPAN;
-                    gDefaultLanguage = gDefaultLangForJPN;
-                    gDefaultCountry = gDefaultCountryForJPN;
+                    gDefaultLanguage    = gDefaultLangForJPN;
+                    gDefaultCountry     = gDefaultCountryForJPN;
                 } else if (OSGetTitleID() == 0x0005001010040100L || acpMetaXml->region == 2) {
                     DEBUG_FUNCTION_LINE("Set default to USA");
                     gDefaultProductArea = MCP_REGION_USA;
-                    gDefaultLanguage = gDefaultLangForUSA;
-                    gDefaultCountry = gDefaultCountryForUSA;
+                    gDefaultLanguage    = gDefaultLangForUSA;
+                    gDefaultCountry     = gDefaultCountryForUSA;
                 } else if (OSGetTitleID() == 0x0005001010040200L || acpMetaXml->region == 4) {
                     DEBUG_FUNCTION_LINE("Set default to EUR");
                     gDefaultProductArea = MCP_REGION_EUROPE;
-                    gDefaultLanguage = gDefaultLangForEUR;
-                    gDefaultCountry = gDefaultCountryForEUR;
+                    gDefaultLanguage    = gDefaultLangForEUR;
+                    gDefaultCountry     = gDefaultCountryForEUR;
                 } else {
                     DEBUG_FUNCTION_LINE("Unknown area %08X, forcing language will be disabled", acpMetaXml->region);
                     forceConfigMenu = true;
@@ -160,8 +161,8 @@ ON_FUNCTIONS_PATCHED() {
     }
 
     // Get region and lang from console and set these as default.
-    gCurrentLanguage = gDefaultLanguage;
-    gCurrentCountry = gDefaultCountry;
+    gCurrentLanguage    = gDefaultLanguage;
+    gCurrentCountry     = gDefaultCountry;
     gCurrentProductArea = gDefaultProductArea;
 
     if (gPreferSystemSettings && real_product_area_valid) {
@@ -172,10 +173,10 @@ ON_FUNCTIONS_PATCHED() {
             if (ucHandle >= 0) {
                 UCSysConfig sysConfig;
                 memset((void *) &sysConfig, 0, sizeof(sysConfig));
-                uint32_t data = 0xFFFFFFFF;
+                uint32_t data      = 0xFFFFFFFF;
                 sysConfig.dataType = UC_DATATYPE_UNSIGNED_INT;
                 sysConfig.dataSize = 4;
-                sysConfig.data = &data;
+                sysConfig.data     = &data;
                 strncpy(sysConfig.name, "cafe.language", 64);
                 int ucRes = real_UCReadSysConfig(ucHandle, 1, &sysConfig);
 
@@ -194,7 +195,7 @@ ON_FUNCTIONS_PATCHED() {
     }
 
     wups_storage_item_t *root = nullptr;
-    auto resa = WUPS_GetSubItem(nullptr, CAT_GENERAL_ROOT, &root);
+    auto resa                 = WUPS_GetSubItem(nullptr, CAT_GENERAL_ROOT, &root);
     if (resa != WUPS_STORAGE_ERROR_SUCCESS) {
         DEBUG_FUNCTION_LINE("Failed to read %s subitem", CAT_GENERAL_ROOT);
         return;
@@ -372,11 +373,11 @@ void default_lang_changed(ConfigItemMultipleValues *item, uint32_t newValue) {
 
 void getConfigInfoForLangMap(std::map<Lanuages, const char *> &curLangMap, ConfigItemMultipleValuesPair *pair, uint32_t default_lang, uint32_t *default_index, uint32_t *len) {
     uint32_t i = 0;
-    for (auto &curEntry: curLangMap) {
+    for (auto &curEntry : curLangMap) {
         if (default_lang == curEntry.first) {
             *default_index = i;
         }
-        pair[i].value = curEntry.first;
+        pair[i].value     = curEntry.first;
         pair[i].valueName = (char *) curEntry.second;
         i++;
     }
@@ -397,26 +398,25 @@ WUPS_GET_CONFIG() {
     WUPSConfigItemBoolean_AddToCategoryHandled(config, cat, VAL_PREFER_SYSTEM_SETTINGS, "Prefer System Settings For Own Region", gPreferSystemSettings, &prefer_system_changed);
 
     std::map<Lanuages, const char *> eur_lang_map{
-            {LANG_ENGLISH,    "English"},
-            {LANG_FRANCAIS,   "Francais"},
-            {LANG_DEUTSCH,    "Deutsch"},
-            {LANG_ITALIANO,   "Italiano"},
-            {LANG_ESPANOL,    "Espanol"},
+            {LANG_ENGLISH, "English"},
+            {LANG_FRANCAIS, "Francais"},
+            {LANG_DEUTSCH, "Deutsch"},
+            {LANG_ITALIANO, "Italiano"},
+            {LANG_ESPANOL, "Espanol"},
             {LANG_NEDERLANDS, "Nederlands"},
-            {LANG_PORTUGUES,  "Portugues"},
-            {LANG_RUSSKI,     "Russki"},
+            {LANG_PORTUGUES, "Portugues"},
+            {LANG_RUSSKI, "Russki"},
     };
 
     std::map<Lanuages, const char *> usa_lang_map{
-            {LANG_ENGLISH,   "English"},
-            {LANG_FRANCAIS,  "Francais"},
-            {LANG_ESPANOL,   "Espanol"},
-            {LANG_PORTUGUES, "Portugues"}
-    };
+            {LANG_ENGLISH, "English"},
+            {LANG_FRANCAIS, "Francais"},
+            {LANG_ESPANOL, "Espanol"},
+            {LANG_PORTUGUES, "Portugues"}};
 
     ConfigItemMultipleValuesPair lang_eur_pair[eur_lang_map.size()];
     uint32_t number_lang_eur_values = 0;
-    uint32_t default_index_eur = 0;
+    uint32_t default_index_eur      = 0;
 
     getConfigInfoForLangMap(eur_lang_map, lang_eur_pair, gDefaultLangForEUR, &default_index_eur, &number_lang_eur_values);
 
@@ -425,7 +425,7 @@ WUPS_GET_CONFIG() {
 
     ConfigItemMultipleValuesPair lang_usa_pair[eur_lang_map.size()];
     uint32_t number_lang_usa_values = 0;
-    uint32_t default_index_usa = 0;
+    uint32_t default_index_usa      = 0;
 
     getConfigInfoForLangMap(usa_lang_map, lang_usa_pair, gDefaultLangForUSA, &default_index_usa, &number_lang_usa_values);
 
@@ -459,91 +459,91 @@ DECL_FUNCTION(int, MCP_GetSysProdSettings, int IOHandle, struct MCPSysProdSettin
 
 static const uint64_t
         sSysAppTitleId[][3] =
-        {
                 {
-                        // Updater
-                        0x0005001010040000ull,
-                        0x0005001010040100ull,
-                        0x0005001010040200ull,
-                },
+                        {
+                                // Updater
+                                0x0005001010040000ull,
+                                0x0005001010040100ull,
+                                0x0005001010040200ull,
+                        },
 
-                {
-                        // System Settings
-                        0x0005001010047000ull,
-                        0x0005001010047100ull,
-                        0x0005001010047200ull,
-                },
+                        {
+                                // System Settings
+                                0x0005001010047000ull,
+                                0x0005001010047100ull,
+                                0x0005001010047200ull,
+                        },
 
-                {
-                        // Parental Controls
-                        0x0005001010048000ull,
-                        0x0005001010048100ull,
-                        0x0005001010048200ull,
-                },
+                        {
+                                // Parental Controls
+                                0x0005001010048000ull,
+                                0x0005001010048100ull,
+                                0x0005001010048200ull,
+                        },
 
-                {
-                        // User Settings
-                        0x0005001010049000ull,
-                        0x0005001010049100ull,
-                        0x0005001010049200ull,
-                },
+                        {
+                                // User Settings
+                                0x0005001010049000ull,
+                                0x0005001010049100ull,
+                                0x0005001010049200ull,
+                        },
 
-                {
-                        // Mii Maker
-                        0x000500101004A000ull,
-                        0x000500101004A100ull,
-                        0x000500101004A200ull,
-                },
+                        {
+                                // Mii Maker
+                                0x000500101004A000ull,
+                                0x000500101004A100ull,
+                                0x000500101004A200ull,
+                        },
 
-                {
-                        // Account Settings
-                        0x000500101004B000ull,
-                        0x000500101004B100ull,
-                        0x000500101004B200ull,
-                },
+                        {
+                                // Account Settings
+                                0x000500101004B000ull,
+                                0x000500101004B100ull,
+                                0x000500101004B200ull,
+                        },
 
-                {
-                        // Daily log
-                        0x000500101004C000ull,
-                        0x000500101004C100ull,
-                        0x000500101004C200ull,
-                },
+                        {
+                                // Daily log
+                                0x000500101004C000ull,
+                                0x000500101004C100ull,
+                                0x000500101004C200ull,
+                        },
 
-                {
-                        // Notifications
-                        0x000500101004D000ull,
-                        0x000500101004D100ull,
-                        0x000500101004D200ull,
-                },
+                        {
+                                // Notifications
+                                0x000500101004D000ull,
+                                0x000500101004D100ull,
+                                0x000500101004D200ull,
+                        },
 
-                {
-                        // Health and Safety Information
-                        0x000500101004E000ull,
-                        0x000500101004E100ull,
-                        0x000500101004E200ull,
-                },
+                        {
+                                // Health and Safety Information
+                                0x000500101004E000ull,
+                                0x000500101004E100ull,
+                                0x000500101004E200ull,
+                        },
 
-                {
-                        // Electronic Manual
-                        0x0005001B10059000ull,
-                        0x0005001B10059100ull,
-                        0x0005001B10059200ull,
-                },
+                        {
+                                // Electronic Manual
+                                0x0005001B10059000ull,
+                                0x0005001B10059100ull,
+                                0x0005001B10059200ull,
+                        },
 
-                {
-                        // Wii U Chat
-                        0x000500101005A000ull,
-                        0x000500101005A100ull,
-                        0x000500101005A200ull,
-                },
+                        {
+                                // Wii U Chat
+                                0x000500101005A000ull,
+                                0x000500101005A100ull,
+                                0x000500101005A200ull,
+                        },
 
-                {
-                        // "Software/Data Transfer"
-                        0x0005001010062000ull,
-                        0x0005001010062100ull,
-                        0x0005001010062200ull,
-                },
-        };
+                        {
+                                // "Software/Data Transfer"
+                                0x0005001010062000ull,
+                                0x0005001010062100ull,
+                                0x0005001010062200ull,
+                        },
+};
 
 bool getRealProductArea(MCPRegion *out) {
     if (out == nullptr) {
@@ -552,7 +552,7 @@ bool getRealProductArea(MCPRegion *out) {
     auto handle = MCP_Open();
     if (handle >= 0) {
         auto data = (struct MCPSysProdSettings *) memalign(0x40, sizeof(struct MCPSysProdSettings));
-        auto res = real_MCP_GetSysProdSettings(handle, data);
+        auto res  = real_MCP_GetSysProdSettings(handle, data);
         if (res >= 0) {
             *out = data->product_area;
         }
@@ -587,4 +587,3 @@ WUPS_MUST_REPLACE(ACPGetLaunchMetaXml, WUPS_LOADER_LIBRARY_NN_ACP, ACPGetLaunchM
 WUPS_MUST_REPLACE(MCP_GetSysProdSettings, WUPS_LOADER_LIBRARY_COREINIT, MCP_GetSysProdSettings);
 WUPS_MUST_REPLACE(UCReadSysConfig, WUPS_LOADER_LIBRARY_COREINIT, UCReadSysConfig);
 WUPS_MUST_REPLACE(_SYSGetSystemApplicationTitleIdByProdArea, WUPS_LOADER_LIBRARY_SYSAPP, _SYSGetSystemApplicationTitleIdByProdArea);
-
