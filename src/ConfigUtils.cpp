@@ -116,7 +116,7 @@ void ConfigUtils::displayMenu() {
     VPADStatus vpad_data{};
     VPADReadError vpad_error;
     KPADStatus kpad_data{};
-    int32_t kpad_error;
+    KPADError kpad_error;
 
     auto selectedBtn = 0;
 
