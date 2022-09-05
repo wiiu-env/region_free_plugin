@@ -18,6 +18,7 @@ enum Lanuages {
 
 
 extern int gPreferSystemSettings;
+extern int gSkipOwnRegion;
 extern int gAutoDetection;
 extern Lanuages gDefaultLanguage;
 extern int32_t gDefaultCountry;

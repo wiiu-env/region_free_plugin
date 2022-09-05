@@ -1,6 +1,7 @@
 #include "ConfigUtils.h"
 #include "globals.h"
 #include "utils/logger.h"
+#include <coreinit/debug.h>
 #include <coreinit/filesystem.h>
 #include <coreinit/mcp.h>
 #include <coreinit/screen.h>
@@ -34,6 +35,7 @@ DECL_FUNCTION(int32_t, ACPGetLaunchMetaXml, ACPMetaXml *metaxml) {
     if (metaxml != nullptr) {
         metaxml->region = 0xFFFFFFFF;
     }
+
     return result;
 }
 
@@ -62,13 +64,6 @@ DECL_FUNCTION(int, UCReadSysConfig, int IOHandle, int count, struct UCSysConfig 
     return result;
 }
 
-ON_APPLICATION_ENDS() {
-    gCurrentLanguage    = gDefaultLanguage;
-    gCurrentCountry     = gDefaultCountry;
-    gCurrentProductArea = gDefaultProductArea;
-    deinitLogging();
-}
-
 #define CAT_GENERAL_ROOT           "root"
 #define CAT_GENERAL_SETTINGS       "general_settings"
 #define CAT_TITLE_SETTINGS         "title_settings"
@@ -77,6 +72,7 @@ ON_APPLICATION_ENDS() {
 #define VAL_COUNTRY                "cntry_reg"
 #define VAL_PRODUCT_AREA           "product_area"
 
+#define VAL_SKIP_OWN_REGION        "skip_own_region"
 #define VAL_PREFER_SYSTEM_SETTINGS "prefer_system_settings"
 #define VAL_AUTO_DETECTION         "auto_detection"
 #define VAL_DEFAULT_LANG_EUR       "default_lang_eur"
@@ -98,7 +94,7 @@ DECL_FUNCTION(int32_t, ACPGetTitleMetaXmlByDevice, uint32_t titleid_upper, uint3
     return result;
 }
 
-ON_FUNCTIONS_PATCHED() {
+void bootStuff() {
     MCPRegion real_product_area;
     auto real_product_area_valid = getRealProductArea(&real_product_area);
     if (real_product_area_valid) {
@@ -119,7 +115,7 @@ ON_FUNCTIONS_PATCHED() {
     }
 
     bool forceConfigMenu = false;
-    auto *acpMetaXml     = (ACPMetaXml *) memalign(0x40, 0x4000);
+    auto *acpMetaXml     = (ACPMetaXml *) memalign(0x40, sizeof(ACPMetaXml));
 
     memset(acpMetaXml, 0, sizeof(ACPMetaXml));
     auto regionFromXML = 0;
@@ -238,8 +234,26 @@ ON_FUNCTIONS_PATCHED() {
             gCurrentProductArea = gDefaultProductArea;
         }
 
+        bool isWiiUMenu = false;
+        if (OSGetTitleID() == 0x0005001010040000L || // Wii U Menu JPN
+            OSGetTitleID() == 0x0005001010040100L || // Wii U Menu USA
+            OSGetTitleID() == 0x0005001010040200L) { // Wii U Menu EUR
+            isWiiUMenu = true;
+        }
+
+        bool showMenu = !gAutoDetection;
+
+        if (real_product_area_valid && (regionFromXML & real_product_area) == real_product_area) {
+            if (gSkipOwnRegion && !forceConfigMenu) {
+                // If the want to skip checks for own region and we were able
+                // to tell the region of the current title don't show the menu.
+                showMenu = false;
+                return;
+            }
+        }
+
         // this overrides the current settings
-        if (forceConfigMenu || !gAutoDetection) {
+        if (forceConfigMenu || (!isWiiUMenu && showMenu)) {
             ConfigUtils::openConfigMenu();
             // Save settings to storage
             WUPS_StoreInt(curTitleItem, VAL_LANGUAGE, gCurrentLanguage);
@@ -251,8 +265,6 @@ ON_FUNCTIONS_PATCHED() {
         DEBUG_FUNCTION_LINE("Country will be force to %d", gDefaultCountry);
         DEBUG_FUNCTION_LINE("Product Area will be forced to %d", gCurrentProductArea);
     }
-
-    WUPS_CloseStorage();
 }
 
 ON_APPLICATION_START() {
@@ -276,6 +288,10 @@ ON_APPLICATION_START() {
     }
     if (WUPS_GetInt(general_settings, VAL_PREFER_SYSTEM_SETTINGS, (int32_t *) &gPreferSystemSettings) != WUPS_STORAGE_ERROR_SUCCESS) {
         WUPS_StoreInt(general_settings, VAL_PREFER_SYSTEM_SETTINGS, gPreferSystemSettings);
+    }
+
+    if (WUPS_GetInt(general_settings, VAL_SKIP_OWN_REGION, (int32_t *) &gSkipOwnRegion) != WUPS_STORAGE_ERROR_SUCCESS) {
+        WUPS_StoreInt(general_settings, VAL_SKIP_OWN_REGION, gSkipOwnRegion);
     }
 
     if (WUPS_GetInt(general_settings, VAL_DEFAULT_LANG_EUR, (int32_t *) &gDefaultLangForEUR) != WUPS_STORAGE_ERROR_SUCCESS) {
@@ -309,6 +325,10 @@ ON_APPLICATION_START() {
         gForceSettingsEnabled = 0;
     }
     DEBUG_FUNCTION_LINE("Start done");
+
+    bootStuff();
+
+    WUPS_CloseStorage();
 }
 
 void auto_detection_changed(ConfigItemBoolean *item, bool newValue) {
@@ -342,6 +362,23 @@ void prefer_system_changed(ConfigItemBoolean *item, bool newValue) {
     }
 
     WUPS_StoreInt(general_settings, VAL_PREFER_SYSTEM_SETTINGS, newValue);
+    gPreferSystemSettings = newValue;
+}
+
+void skip_own_region_changed(ConfigItemBoolean *item, bool newValue) {
+    DEBUG_FUNCTION_LINE("New value in skip_own_region_changed changed: %d", newValue);
+
+    wups_storage_item_t *root;
+    if (WUPS_GetSubItem(nullptr, CAT_GENERAL_ROOT, &root) != WUPS_STORAGE_ERROR_SUCCESS) {
+        return;
+    }
+
+    wups_storage_item_t *general_settings;
+    if (WUPS_GetSubItem(root, CAT_GENERAL_SETTINGS, &general_settings) != WUPS_STORAGE_ERROR_SUCCESS) {
+        return;
+    }
+
+    WUPS_StoreInt(general_settings, VAL_SKIP_OWN_REGION, newValue);
     gPreferSystemSettings = newValue;
 }
 
@@ -394,8 +431,9 @@ WUPS_GET_CONFIG() {
     WUPSConfigCategoryHandle cat;
     WUPSConfig_AddCategoryByNameHandled(config, "Settings", &cat);
 
-    WUPSConfigItemBoolean_AddToCategoryHandled(config, cat, VAL_DEFAULT_LANG_USA, "Auto Detection", gAutoDetection, &auto_detection_changed);
-    WUPSConfigItemBoolean_AddToCategoryHandled(config, cat, VAL_PREFER_SYSTEM_SETTINGS, "Prefer System Settings For Own Region", gPreferSystemSettings, &prefer_system_changed);
+    WUPSConfigItemBoolean_AddToCategoryHandled(config, cat, VAL_DEFAULT_LANG_USA, "Auto detect region/language", gAutoDetection, &auto_detection_changed);
+    WUPSConfigItemBoolean_AddToCategoryHandled(config, cat, VAL_PREFER_SYSTEM_SETTINGS, "Prefer system language for in-region titles", gPreferSystemSettings, &prefer_system_changed);
+    WUPSConfigItemBoolean_AddToCategoryHandled(config, cat, VAL_SKIP_OWN_REGION, "Skip check for in-region titles", gSkipOwnRegion, &skip_own_region_changed);
 
     std::map<Lanuages, const char *> eur_lang_map{
             {LANG_ENGLISH, "English"},
@@ -431,7 +469,6 @@ WUPS_GET_CONFIG() {
 
     WUPSConfigItemMultipleValues_AddToCategoryHandled(config, cat, VAL_DEFAULT_LANG_USA, "Default Language for USA", default_index_usa, lang_usa_pair, number_lang_usa_values,
                                                       &default_lang_changed);
-
 
     return config;
 }
@@ -580,6 +617,13 @@ DECL_FUNCTION(uint64_t, _SYSGetSystemApplicationTitleIdByProdArea, SYSTEM_APP_ID
 
     uint64_t res = sSysAppTitleId[param_1][regionIdx];
     return res;
+}
+
+ON_APPLICATION_ENDS() {
+    gCurrentLanguage    = gDefaultLanguage;
+    gCurrentCountry     = gDefaultCountry;
+    gCurrentProductArea = gDefaultProductArea;
+    deinitLogging();
 }
 
 WUPS_MUST_REPLACE(ACPGetTitleMetaXmlByDevice, WUPS_LOADER_LIBRARY_NN_ACP, ACPGetTitleMetaXmlByDevice);
