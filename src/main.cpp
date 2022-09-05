@@ -127,32 +127,35 @@ void bootStuff() {
             if (real_product_area_valid && (regionFromXML & real_product_area) == real_product_area) {
                 gCurrentProductArea = real_product_area;
             } else {
-                if (OSGetTitleID() == 0x0005001010040000L || acpMetaXml->region == 1) {
+                auto curTitleId = OSGetTitleID();
+                if (curTitleId == 0x0005001010040000L || curTitleId == 0x0005001001004E000L || acpMetaXml->region == 1) {
                     DEBUG_FUNCTION_LINE("Set default to JAPAN");
                     gDefaultProductArea = MCP_REGION_JAPAN;
                     gDefaultLanguage    = gDefaultLangForJPN;
                     gDefaultCountry     = gDefaultCountryForJPN;
-                } else if (OSGetTitleID() == 0x0005001010040100L || acpMetaXml->region == 2) {
+                } else if (curTitleId == 0x0005001010040100L || curTitleId == 0x0005001001004E100L || acpMetaXml->region == 2) {
                     DEBUG_FUNCTION_LINE("Set default to USA");
                     gDefaultProductArea = MCP_REGION_USA;
                     gDefaultLanguage    = gDefaultLangForUSA;
                     gDefaultCountry     = gDefaultCountryForUSA;
-                } else if (OSGetTitleID() == 0x0005001010040200L || acpMetaXml->region == 4) {
+                } else if (curTitleId == 0x0005001010040200L || curTitleId == 0x0005001001004E200L || acpMetaXml->region == 4) {
                     DEBUG_FUNCTION_LINE("Set default to EUR");
                     gDefaultProductArea = MCP_REGION_EUROPE;
                     gDefaultLanguage    = gDefaultLangForEUR;
                     gDefaultCountry     = gDefaultCountryForEUR;
                 } else {
-                    DEBUG_FUNCTION_LINE("Unknown area %08X, forcing language will be disabled", acpMetaXml->region);
+                    DEBUG_FUNCTION_LINE_ERR("Unknown area %08X, forcing language will be disabled", acpMetaXml->region);
                     forceConfigMenu = true;
                 }
             }
         } else {
+            DEBUG_FUNCTION_LINE_ERR("real_ACPGetLaunchMetaXml failed");
             forceConfigMenu = true;
         }
         ACPFinalize();
         free(acpMetaXml);
     } else {
+        DEBUG_FUNCTION_LINE_ERR("failed to allocate acpMetaXml");
         forceConfigMenu = true;
     }
 
@@ -181,11 +184,11 @@ void bootStuff() {
                     gCurrentLanguage = static_cast<Lanuages>(*(uint32_t *) sysConfig.data);
                     gDefaultLanguage = static_cast<Lanuages>(*(uint32_t *) sysConfig.data);
                 } else {
-                    DEBUG_FUNCTION_LINE("UCReadSysConfig failed");
+                    DEBUG_FUNCTION_LINE_ERR("UCReadSysConfig failed");
                 }
                 UCClose(ucHandle);
             } else {
-                DEBUG_FUNCTION_LINE("UCOpen failed");
+                DEBUG_FUNCTION_LINE_ERR("UCOpen failed");
             }
         }
     }
@@ -193,14 +196,14 @@ void bootStuff() {
     wups_storage_item_t *root = nullptr;
     auto resa                 = WUPS_GetSubItem(nullptr, CAT_GENERAL_ROOT, &root);
     if (resa != WUPS_STORAGE_ERROR_SUCCESS) {
-        DEBUG_FUNCTION_LINE("Failed to read %s subitem", CAT_GENERAL_ROOT);
+        DEBUG_FUNCTION_LINE_ERR("Failed to read %s subitem", CAT_GENERAL_ROOT);
         return;
     }
 
     wups_storage_item_t *title_settings;
     if (WUPS_GetSubItem(root, CAT_TITLE_SETTINGS, &title_settings) != WUPS_STORAGE_ERROR_SUCCESS) {
         if (WUPS_CreateSubItem(root, CAT_TITLE_SETTINGS, &title_settings) != WUPS_STORAGE_ERROR_SUCCESS) {
-            DEBUG_FUNCTION_LINE("WUPS_CreateSubItem %s failed", CAT_TITLE_SETTINGS);
+            DEBUG_FUNCTION_LINE_ERR("WUPS_CreateSubItem %s failed", CAT_TITLE_SETTINGS);
             return;
         }
     }
@@ -211,7 +214,7 @@ void bootStuff() {
     wups_storage_item_t *curTitleItem;
     if (WUPS_GetSubItem(title_settings, buffer, &curTitleItem) != WUPS_STORAGE_ERROR_SUCCESS) {
         if (WUPS_CreateSubItem(title_settings, buffer, &curTitleItem) != WUPS_STORAGE_ERROR_SUCCESS) {
-            DEBUG_FUNCTION_LINE("WUPS_CreateSubItem %s failed", buffer);
+            DEBUG_FUNCTION_LINE_ERR("WUPS_CreateSubItem %s failed", buffer);
             return;
         }
     }
@@ -324,7 +327,6 @@ ON_APPLICATION_START() {
         OSGetTitleID() == 0x0005001010040200L) { // Wii U Menu EUR
         gForceSettingsEnabled = 0;
     }
-    DEBUG_FUNCTION_LINE("Start done");
 
     bootStuff();
 
