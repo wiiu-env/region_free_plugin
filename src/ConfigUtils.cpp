@@ -8,6 +8,7 @@
 #include <coreinit/screen.h>
 #include <map>
 #include <memory/mappedmemory.h>
+#include <memory>
 #include <padscore/kpad.h>
 #include <string>
 #include <vector>
@@ -23,6 +24,15 @@
 #define COLOR_BLACK              Color(0, 0, 0, 255)
 
 #define MAX_BUTTONS_ON_SCREEN    8
+
+template<typename... Args>
+std::string string_format(const std::string &format, Args... args) {
+    int size_s = std::snprintf(nullptr, 0, format.c_str(), args...) + 1; // Extra space for '\0'
+    auto size  = static_cast<size_t>(size_s);
+    auto buf   = std::make_unique<char[]>(size);
+    std::snprintf(buf.get(), size, format.c_str(), args...);
+    return std::string(buf.get(), buf.get() + size - 1); // We don't want the '\0' inside
+}
 
 static uint32_t remapWiiMoteButtons(uint32_t buttons) {
     uint32_t conv_buttons = 0;
@@ -205,7 +215,7 @@ void ConfigUtils::displayMenu() {
             }
         }
 
-        if (buttonsTriggered & VPAD_BUTTON_HOME) {
+        if (buttonsTriggered & (VPAD_BUTTON_A)) {
             break;
         }
 
@@ -277,24 +287,29 @@ void ConfigUtils::displayMenu() {
             DrawUtils::setFontColor(COLOR_TEXT);
             DrawUtils::setFontSize(24);
 
+            std::string regionText = region_map[curSelectedRegion];
             if (selectedBtn == 0) {
                 DrawUtils::drawRect(16, index, SCREEN_WIDTH - 16 * 2, 44, 4, COLOR_BORDER_HIGHLIGHTED);
+                regionText = string_format("%s%s%s", curRegionIndex > 0 ? "< " : "  ", regionText.c_str(), curRegionIndex < region_map.size() - 1 ? " >" : "").c_str();
             } else {
                 DrawUtils::drawRect(16, index, SCREEN_WIDTH - 16 * 2, 44, 2, COLOR_BORDER);
             }
 
             DrawUtils::print(16 * 2, index + 8 + 24, "Region");
-            DrawUtils::print(SCREEN_WIDTH - 16 * 2, index + 8 + 24, region_map[curSelectedRegion], true);
+            DrawUtils::print(SCREEN_WIDTH - 16 * 2, index + 8 + 24, regionText.c_str(), true);
             index += 42 + 8;
 
+            std::string languageText = lang_map[curSelectedLanguage];
             if (selectedBtn == 1) {
                 DrawUtils::drawRect(16, index, SCREEN_WIDTH - 16 * 2, 44, 4, COLOR_BORDER_HIGHLIGHTED);
+                languageText = string_format("%s%s%s", curLangIndex > 0 ? "< " : "  ", languageText.c_str(), curLangIndex < lang_map.size() - 1 ? " >" : "").c_str();
             } else {
                 DrawUtils::drawRect(16, index, SCREEN_WIDTH - 16 * 2, 44, 2, COLOR_BORDER);
             }
             DrawUtils::print(16 * 2, index + 8 + 24, "Language");
 
-            DrawUtils::print(SCREEN_WIDTH - 16 * 2, index + 8 + 24, lang_map[curSelectedLanguage], true);
+
+            DrawUtils::print(SCREEN_WIDTH - 16 * 2, index + 8 + 24, languageText.c_str(), true);
 
             index += 42 + 8;
 
@@ -302,7 +317,7 @@ void ConfigUtils::displayMenu() {
             DrawUtils::drawRectFilled(8, SCREEN_HEIGHT - 24 - 8 - 4, SCREEN_WIDTH - 8 * 2, 3, COLOR_BLACK);
             DrawUtils::setFontSize(18);
             DrawUtils::print(16, SCREEN_HEIGHT - 8, "\ue07d Navigate ");
-            DrawUtils::print(SCREEN_WIDTH - 16, SCREEN_HEIGHT - 8, "\ue001 Back", true);
+            DrawUtils::print(SCREEN_WIDTH - 16, SCREEN_HEIGHT - 8, "\ue000 Select", true);
 
             DrawUtils::endDraw();
             redraw = false;

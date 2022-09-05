@@ -1,6 +1,7 @@
 #include "globals.h"
 
 int gPreferSystemSettings     = 1;
+int gSkipOwnRegion            = 1;
 int gAutoDetection            = 1;
 int gForceSettingsEnabled     = 0;
 Lanuages gDefaultLanguage     = LANG_ENGLISH;
