@@ -118,44 +118,44 @@ void bootStuff() {
     auto *acpMetaXml     = (ACPMetaXml *) memalign(0x40, sizeof(ACPMetaXml));
 
     memset(acpMetaXml, 0, sizeof(ACPMetaXml));
-    auto regionFromXML = 0;
+    uint32_t regionFromXML = 0;
     if (acpMetaXml) {
         ACPInitialize();
-        auto res = real_ACPGetLaunchMetaXml(acpMetaXml);
+        auto res = ACPGetTitleMetaXml(OSGetTitleID(), acpMetaXml);
         if (res >= 0) {
             regionFromXML = acpMetaXml->region;
             if (real_product_area_valid && (regionFromXML & real_product_area) == real_product_area) {
                 gCurrentProductArea = real_product_area;
             } else {
                 auto curTitleId = OSGetTitleID();
-                if (curTitleId == 0x0005001010040000L || curTitleId == 0x0005001001004E000L || acpMetaXml->region == 1) {
+                if (curTitleId == 0x0005001010040000L || regionFromXML == 1) {
                     DEBUG_FUNCTION_LINE("Set default to JAPAN");
                     gDefaultProductArea = MCP_REGION_JAPAN;
                     gDefaultLanguage    = gDefaultLangForJPN;
                     gDefaultCountry     = gDefaultCountryForJPN;
-                } else if (curTitleId == 0x0005001010040100L || curTitleId == 0x0005001001004E100L || acpMetaXml->region == 2) {
+                } else if (curTitleId == 0x0005001010040100L || regionFromXML == 2) {
                     DEBUG_FUNCTION_LINE("Set default to USA");
                     gDefaultProductArea = MCP_REGION_USA;
                     gDefaultLanguage    = gDefaultLangForUSA;
                     gDefaultCountry     = gDefaultCountryForUSA;
-                } else if (curTitleId == 0x0005001010040200L || curTitleId == 0x0005001001004E200L || acpMetaXml->region == 4) {
+                } else if (curTitleId == 0x0005001010040200L || curTitleId == 0x0005001001004E200L || regionFromXML == 4) {
                     DEBUG_FUNCTION_LINE("Set default to EUR");
                     gDefaultProductArea = MCP_REGION_EUROPE;
                     gDefaultLanguage    = gDefaultLangForEUR;
                     gDefaultCountry     = gDefaultCountryForEUR;
                 } else {
-                    DEBUG_FUNCTION_LINE_ERR("Unknown area %08X, forcing language will be disabled", acpMetaXml->region);
+                    DEBUG_FUNCTION_LINE_ERR("Unknown area %08X, force menu", acpMetaXml->region);
                     forceConfigMenu = true;
                 }
             }
         } else {
-            DEBUG_FUNCTION_LINE_ERR("real_ACPGetLaunchMetaXml failed");
+            DEBUG_FUNCTION_LINE_ERR("ACPGetTitleMetaXml failed");
             forceConfigMenu = true;
         }
         ACPFinalize();
         free(acpMetaXml);
     } else {
-        DEBUG_FUNCTION_LINE_ERR("failed to allocate acpMetaXml");
+        DEBUG_FUNCTION_LINE_ERR("Failed to allocate acpMetaXml");
         forceConfigMenu = true;
     }
 
