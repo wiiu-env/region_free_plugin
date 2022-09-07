@@ -460,7 +460,7 @@ WUPS_GET_CONFIG() {
 
     getConfigInfoForLangMap(eur_lang_map, lang_eur_pair, gDefaultLangForEUR, &default_index_eur, &number_lang_eur_values);
 
-    WUPSConfigItemMultipleValues_AddToCategoryHandled(config, cat, VAL_DEFAULT_LANG_EUR, "Default Language for EUR", default_index_eur, lang_eur_pair, number_lang_eur_values,
+    WUPSConfigItemMultipleValues_AddToCategoryHandled(config, cat, VAL_DEFAULT_LANG_EUR, "Default language for EUR", default_index_eur, lang_eur_pair, number_lang_eur_values,
                                                       &default_lang_changed);
 
     ConfigItemMultipleValuesPair lang_usa_pair[eur_lang_map.size()];
@@ -469,7 +469,7 @@ WUPS_GET_CONFIG() {
 
     getConfigInfoForLangMap(usa_lang_map, lang_usa_pair, gDefaultLangForUSA, &default_index_usa, &number_lang_usa_values);
 
-    WUPSConfigItemMultipleValues_AddToCategoryHandled(config, cat, VAL_DEFAULT_LANG_USA, "Default Language for USA", default_index_usa, lang_usa_pair, number_lang_usa_values,
+    WUPSConfigItemMultipleValues_AddToCategoryHandled(config, cat, VAL_DEFAULT_LANG_USA, "Default language for USA", default_index_usa, lang_usa_pair, number_lang_usa_values,
                                                       &default_lang_changed);
 
     return config;
