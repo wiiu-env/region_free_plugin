@@ -20,7 +20,7 @@ Via the plugin config menu (press L, DPAD Down and Minus on the gamepad) you can
 
 - **Auto detect region/language**: Enables/Disables the auto detection of the region/language. When you disable it, you need/can set the region and language for a title on each title start. Enabled by default.
 - **Force auto detection for in-region titles**: Force auto detection when starting a title of your region, even if auto detection is disabled. Enabled by default.
-- **Prefer system language for in-region titles**: Forces the region and language of your console when starting a title of your region (Ignoring "Default language for XXX"). Enabled by default.
+- **Prefer system settings for in-region titles**: Forces the region, country and language of your console when starting a title of your region (Ignoring "Default language for XXX"). Enabled by default.
 - **Default language for EUR**: Sets the default language for EUR titles. Set to english by default.
 - **Default language for USA**: Sets the default language for USA titles. Set to english by default.
 
