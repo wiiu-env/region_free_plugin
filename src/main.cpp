@@ -180,9 +180,25 @@ void bootStuff() {
                 int ucRes = real_UCReadSysConfig(ucHandle, 1, &sysConfig);
 
                 if (ucRes >= 0) {
-                    DEBUG_FUNCTION_LINE("Force default language to system title for own region");
+                    DEBUG_FUNCTION_LINE("Force default language to system language for own region");
                     gCurrentLanguage = static_cast<Lanuages>(*(uint32_t *) sysConfig.data);
                     gDefaultLanguage = static_cast<Lanuages>(*(uint32_t *) sysConfig.data);
+                } else {
+                    DEBUG_FUNCTION_LINE_ERR("UCReadSysConfig failed");
+                }
+
+                memset((void *) &sysConfig, 0, sizeof(sysConfig));
+                data               = 0xFFFFFFFF;
+                sysConfig.dataType = UC_DATATYPE_UNSIGNED_INT;
+                sysConfig.dataSize = 4;
+                sysConfig.data     = &data;
+                strncpy(sysConfig.name, "cafe.cntry_reg", 64);
+                ucRes = real_UCReadSysConfig(ucHandle, 1, &sysConfig);
+
+                if (ucRes >= 0) {
+                    DEBUG_FUNCTION_LINE("Force default country to system country for own region");
+                    gCurrentCountry = (int32_t) * (uint32_t *) sysConfig.data;
+                    gDefaultCountry = (int32_t) * (uint32_t *) sysConfig.data;
                 } else {
                     DEBUG_FUNCTION_LINE_ERR("UCReadSysConfig failed");
                 }
