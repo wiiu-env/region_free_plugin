@@ -450,7 +450,7 @@ WUPS_GET_CONFIG() {
 
     WUPSConfigItemBoolean_AddToCategoryHandled(config, cat, VAL_DEFAULT_LANG_USA, "Auto detect region/language", gAutoDetection, &auto_detection_changed);
     WUPSConfigItemBoolean_AddToCategoryHandled(config, cat, VAL_SKIP_OWN_REGION, "Force auto detection for in-region titles", gSkipOwnRegion, &skip_own_region_changed);
-    WUPSConfigItemBoolean_AddToCategoryHandled(config, cat, VAL_PREFER_SYSTEM_SETTINGS, "Prefer system language for in-region titles", gPreferSystemSettings, &prefer_system_changed);
+    WUPSConfigItemBoolean_AddToCategoryHandled(config, cat, VAL_PREFER_SYSTEM_SETTINGS, "Prefer system settings for in-region titles", gPreferSystemSettings, &prefer_system_changed);
 
     std::map<Lanuages, const char *> eur_lang_map{
             {LANG_ENGLISH, "English"},
