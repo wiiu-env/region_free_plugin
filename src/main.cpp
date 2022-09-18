@@ -241,11 +241,11 @@ void bootStuff() {
             gCurrentLanguage = gDefaultLanguage;
         }
 
-
+        /*
         if (WUPS_GetInt(curTitleItem, VAL_COUNTRY, (int32_t *) &gCurrentCountry) != WUPS_STORAGE_ERROR_SUCCESS) {
             WUPS_StoreInt(curTitleItem, VAL_COUNTRY, gDefaultCountry);
             gCurrentCountry = gDefaultCountry;
-        }
+        }*/
 
 
         if (WUPS_GetInt(curTitleItem, VAL_PRODUCT_AREA, (int32_t *) &gCurrentProductArea) != WUPS_STORAGE_ERROR_SUCCESS) {
@@ -276,7 +276,7 @@ void bootStuff() {
             ConfigUtils::openConfigMenu();
             // Save settings to storage
             WUPS_StoreInt(curTitleItem, VAL_LANGUAGE, gCurrentLanguage);
-            WUPS_StoreInt(curTitleItem, VAL_COUNTRY, gCurrentCountry);
+            //WUPS_StoreInt(curTitleItem, VAL_COUNTRY, gCurrentCountry);
             WUPS_StoreInt(curTitleItem, VAL_PRODUCT_AREA, gCurrentProductArea);
         }
 
@@ -300,7 +300,6 @@ ON_APPLICATION_START() {
     if (WUPS_GetSubItem(root, CAT_GENERAL_SETTINGS, &general_settings) != WUPS_STORAGE_ERROR_SUCCESS) {
         WUPS_CreateSubItem(root, CAT_GENERAL_SETTINGS, &general_settings);
     }
-
 
     if (WUPS_GetInt(general_settings, VAL_AUTO_DETECTION, (int32_t *) &gAutoDetection) != WUPS_STORAGE_ERROR_SUCCESS) {
         WUPS_StoreInt(general_settings, VAL_AUTO_DETECTION, gAutoDetection);
