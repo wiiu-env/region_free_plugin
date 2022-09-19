@@ -16,7 +16,7 @@
 
 WUPS_PLUGIN_NAME("Region Free Plugin");
 WUPS_PLUGIN_DESCRIPTION("Allows the user to load titles from other regions");
-WUPS_PLUGIN_VERSION("0.1");
+WUPS_PLUGIN_VERSION(VERSION_FULL);
 WUPS_PLUGIN_AUTHOR("Maschell");
 WUPS_PLUGIN_LICENSE("GPL");
 

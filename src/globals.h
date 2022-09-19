@@ -1,6 +1,10 @@
 #pragma once
 
+#include "version.h"
 #include <coreinit/mcp.h>
+
+#define VERSION      "v0.1"
+#define VERSION_FULL VERSION VERSION_EXTRA
 
 extern int gForceSettingsEnabled;
 
