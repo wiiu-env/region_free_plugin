@@ -191,6 +191,9 @@ void ConfigUtils::displayMenu() {
     int32_t curRegionIndex = region_map_to_index[curSelectedRegion];
     int32_t curLangIndex   = lang_map_to_index[curSelectedLanguage];
 
+    KPADInit();
+    WPADEnableURCC(true);
+
     while (true) {
         buttonsTriggered = 0;
         buttonsReleased  = 0;
@@ -203,7 +206,7 @@ void ConfigUtils::displayMenu() {
 
         for (int i = 0; i < 4; i++) {
             if (KPADReadEx((KPADChan) i, &kpad_data, 1, &kpad_error) > 0) {
-                if (kpad_error == KPAD_ERROR_OK) {
+                if (kpad_error == KPAD_ERROR_OK || kpad_data.extensionType == 0xFF) {
                     if (kpad_data.extensionType == WPAD_EXT_CORE || kpad_data.extensionType == WPAD_EXT_NUNCHUK) {
                         buttonsTriggered |= remapWiiMoteButtons(kpad_data.trigger);
                         buttonsReleased |= remapWiiMoteButtons(kpad_data.release);
@@ -323,6 +326,10 @@ void ConfigUtils::displayMenu() {
             redraw = false;
         }
     }
+    KPADShutdown();
+    // This disconnects any Pro Controllers...
+    //WPADEnableURCC(false);
+
     DrawUtils::beginDraw();
     DrawUtils::clear(COLOR_BLACK);
     DrawUtils::endDraw();
