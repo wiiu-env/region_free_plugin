@@ -344,7 +344,7 @@ void ConfigUtils::openConfigMenu() {
     void *screenbuffer1       = MEMAllocFromMappedMemoryForGX2Ex(screen_buf1_size, 0x100);
 
     if (!screenbuffer0 || !screenbuffer1) {
-        DEBUG_FUNCTION_LINE("Failed to alloc buffers");
+        DEBUG_FUNCTION_LINE_ERR("Failed to alloc buffers");
         goto error_exit;
     }
 
@@ -363,7 +363,10 @@ void ConfigUtils::openConfigMenu() {
     OSScreenFlipBuffersEx(SCREEN_DRC);
 
     DrawUtils::initBuffers(screenbuffer0, screen_buf0_size, screenbuffer1, screen_buf1_size);
-    DrawUtils::initFont();
+    if (!DrawUtils::initFont()) {
+        DEBUG_FUNCTION_LINE_ERR("Failed to init font");
+        goto error_exit;
+    }
 
     displayMenu();
 

@@ -1,9 +1,13 @@
 #include "DrawUtils.h"
 
+#include "utils/logger.h"
+#include "utils/utils.h"
+#include <coreinit/cache.h>
 #include <coreinit/memory.h>
 #include <coreinit/screen.h>
-#include <ft2build.h>
-#include FT_FREETYPE_H
+#include <cstdlib>
+#include <png.h>
+
 
 // buffer width
 #define TV_WIDTH  0x500
@@ -15,10 +19,8 @@ uint8_t *DrawUtils::tvBuffer  = nullptr;
 uint32_t DrawUtils::tvSize    = 0;
 uint8_t *DrawUtils::drcBuffer = nullptr;
 uint32_t DrawUtils::drcSize   = 0;
+static SFT pFont              = {};
 
-// Don't put those into the clase or we have to include ft everywhere
-static FT_Library ft_lib = nullptr;
-static FT_Face ft_face   = nullptr;
 static Color font_col(0xFFFFFFFF);
 
 void DrawUtils::initBuffers(void *tvBuffer_, uint32_t tvSize_, void *drcBuffer_, uint32_t drcSize_) {
@@ -77,10 +79,17 @@ void DrawUtils::drawPixel(uint32_t x, uint32_t y, uint8_t r, uint8_t g, uint8_t 
         }
     }
 
+    uint32_t USED_TV_WIDTH = TV_WIDTH;
+    float scale            = 1.5f;
+    if (DrawUtils::tvSize == 0x00FD2000) {
+        USED_TV_WIDTH = 1920;
+        scale         = 2.25f;
+    }
+
     // scale and put pixel in the tv buffer
-    for (uint32_t yy = (y * 1.5); yy < ((y * 1.5) + 1); yy++) {
-        for (uint32_t xx = (x * 1.5); xx < ((x * 1.5) + 1); xx++) {
-            uint32_t i = (xx + yy * TV_WIDTH) * 4;
+    for (uint32_t yy = (y * scale); yy < ((y * scale) + (uint32_t) scale); yy++) {
+        for (uint32_t xx = (x * scale); xx < ((x * scale) + (uint32_t) scale); xx++) {
+            uint32_t i = (xx + yy * USED_TV_WIDTH) * 4;
             if (i + 3 < tvSize / 2) {
                 if (isBackBuffer) {
                     i += tvSize / 2;
@@ -140,34 +149,102 @@ void DrawUtils::drawBitmap(uint32_t x, uint32_t y, uint32_t target_width, uint32
     }
 }
 
-void DrawUtils::initFont() {
+static void png_read_data(png_structp png_ptr, png_bytep outBytes, png_size_t byteCountToRead) {
+    void **data = (void **) png_get_io_ptr(png_ptr);
+
+    memcpy(outBytes, *data, byteCountToRead);
+    *((uint8_t **) data) += byteCountToRead;
+}
+
+void DrawUtils::drawPNG(uint32_t x, uint32_t y, const uint8_t *data) {
+    png_structp png_ptr = png_create_read_struct(PNG_LIBPNG_VER_STRING, nullptr, nullptr, nullptr);
+    if (png_ptr == nullptr) {
+        return;
+    }
+
+    png_infop info_ptr = png_create_info_struct(png_ptr);
+    if (info_ptr == nullptr) {
+        png_destroy_read_struct(&png_ptr, nullptr, nullptr);
+        return;
+    }
+
+    png_set_read_fn(png_ptr, (void *) &data, png_read_data);
+
+    png_read_info(png_ptr, info_ptr);
+
+    uint32_t width  = 0;
+    uint32_t height = 0;
+    int bitDepth    = 0;
+    int colorType   = -1;
+    uint32_t retval = png_get_IHDR(png_ptr, info_ptr, &width, &height, &bitDepth, &colorType, nullptr, nullptr, nullptr);
+    if (retval != 1) {
+        return;
+    }
+
+    uint32_t bytesPerRow = png_get_rowbytes(png_ptr, info_ptr);
+    auto *rowData        = new uint8_t[bytesPerRow];
+
+    for (uint32_t yy = y; yy < y + height; yy++) {
+        png_read_row(png_ptr, (png_bytep) rowData, nullptr);
+
+        for (uint32_t xx = x; xx < x + width; xx++) {
+            if (colorType == PNG_COLOR_TYPE_RGB_ALPHA) {
+                uint32_t i = (xx - x) * 4;
+                drawPixel(xx, yy, rowData[i], rowData[i + 1], rowData[i + 2], rowData[i + 3]);
+            } else if (colorType == PNG_COLOR_TYPE_RGB) {
+                uint32_t i = (xx - x) * 3;
+                drawPixel(xx, yy, rowData[i], rowData[i + 1], rowData[i + 2], 0xFF);
+            }
+        }
+    }
+
+    delete[] rowData;
+    png_destroy_read_struct(&png_ptr, &info_ptr, nullptr);
+}
+
+bool DrawUtils::initFont() {
     void *font    = nullptr;
     uint32_t size = 0;
     OSGetSharedData(OS_SHAREDDATATYPE_FONT_STANDARD, 0, &font, &size);
 
     if (font && size) {
-        FT_Init_FreeType(&ft_lib);
-        FT_New_Memory_Face(ft_lib, (FT_Byte *) font, size, 0, &ft_face);
+        pFont.xScale = 20;
+        pFont.yScale = 20,
+        pFont.flags  = SFT_DOWNWARD_Y;
+        pFont.font   = sft_loadmem(font, size);
+        if (!pFont.font) {
+            return false;
+        }
+        OSMemoryBarrier();
+        return true;
     }
+    return false;
 }
 
 void DrawUtils::deinitFont() {
-    FT_Done_Face(ft_face);
-    FT_Done_FreeType(ft_lib);
+    sft_freefont(pFont.font);
+    pFont.font = nullptr;
+    pFont      = {};
 }
 
 void DrawUtils::setFontSize(uint32_t size) {
-    FT_Set_Pixel_Sizes(ft_face, 0, size);
+    pFont.xScale = size;
+    pFont.yScale = size;
+    SFT_LMetrics metrics;
+    sft_lmetrics(&pFont, &metrics);
 }
 
 void DrawUtils::setFontColor(Color col) {
     font_col = col;
 }
 
-static void draw_freetype_bitmap(FT_Bitmap *bitmap, FT_Int x, FT_Int y) {
-    FT_Int i, j, p, q;
-    FT_Int x_max = x + bitmap->width;
-    FT_Int y_max = y + bitmap->rows;
+static void draw_freetype_bitmap(SFT_Image *bmp, int32_t x, int32_t y) {
+    int32_t i, j, p, q;
+
+    int32_t x_max = x + bmp->width;
+    int32_t y_max = y + bmp->height;
+
+    auto *src = (uint8_t *) bmp->pixels;
 
     for (i = x, p = 0; i < x_max; i++, p++) {
         for (j = y, q = 0; j < y_max; j++, q++) {
@@ -175,7 +252,7 @@ static void draw_freetype_bitmap(FT_Bitmap *bitmap, FT_Int x, FT_Int y) {
                 continue;
             }
 
-            float opacity = bitmap->buffer[q * bitmap->pitch + p] / 255.0f;
+            float opacity = src[q * bmp->width + p] / 255.0f;
             DrawUtils::drawPixel(i, j, font_col.r, font_col.g, font_col.b, font_col.a * opacity);
         }
     }
@@ -198,27 +275,59 @@ void DrawUtils::print(uint32_t x, uint32_t y, const char *string, bool alignRigh
 }
 
 void DrawUtils::print(uint32_t x, uint32_t y, const wchar_t *string, bool alignRight) {
-    FT_GlyphSlot slot = ft_face->glyph;
-    FT_Vector pen     = {(int) x, (int) y};
+    auto penX = (int32_t) x;
+    auto penY = (int32_t) y;
 
     if (alignRight) {
-        pen.x -= getTextWidth(string);
+        penX -= getTextWidth(string);
     }
 
+    uint16_t textureWidth = 0, textureHeight = 0;
     for (; *string; string++) {
-        uint32_t charcode = *string;
+        SFT_Glyph gid; //  unsigned long gid;
+        if (sft_lookup(&pFont, *string, &gid) >= 0) {
+            SFT_GMetrics mtx;
+            if (sft_gmetrics(&pFont, gid, &mtx) < 0) {
+                DEBUG_FUNCTION_LINE_ERR("Failed to get glyph metrics");
+                return;
+            }
 
-        if (charcode == '\n') {
-            pen.y += ft_face->size->metrics.height >> 6;
-            pen.x = x;
-            continue;
+            if (*string == '\n') {
+                penY += mtx.minHeight;
+                penX = x;
+                continue;
+            }
+
+            textureWidth  = (mtx.minWidth + 3) & ~3;
+            textureHeight = mtx.minHeight;
+
+            SFT_Image img = {
+                    .pixels = nullptr,
+                    .width  = textureWidth,
+                    .height = textureHeight,
+            };
+
+            if (textureWidth == 0) {
+                textureWidth = 4;
+            }
+            if (textureHeight == 0) {
+                textureHeight = 4;
+            }
+
+            auto buffer = make_unique_nothrow<uint8_t[]>((uint32_t) (img.width * img.height));
+            if (!buffer) {
+                DEBUG_FUNCTION_LINE_ERR("Failed to allocate memory for glyph");
+                return;
+            }
+            img.pixels = buffer.get();
+            if (sft_render(&pFont, gid, img) < 0) {
+                DEBUG_FUNCTION_LINE_ERR("Failed to render glyph");
+                return;
+            } else {
+                draw_freetype_bitmap(&img, (int32_t) (penX + mtx.leftSideBearing), (int32_t) (penY + mtx.yOffset));
+                penX += (int32_t) mtx.advanceWidth;
+            }
         }
-
-        FT_Load_Glyph(ft_face, FT_Get_Char_Index(ft_face, charcode), FT_LOAD_DEFAULT);
-        FT_Render_Glyph(slot, FT_RENDER_MODE_NORMAL);
-
-        draw_freetype_bitmap(&slot->bitmap, pen.x + slot->bitmap_left, pen.y - slot->bitmap_top);
-        pen.x += slot->advance.x >> 6;
     }
 }
 
@@ -241,14 +350,18 @@ uint32_t DrawUtils::getTextWidth(const char *string) {
 }
 
 uint32_t DrawUtils::getTextWidth(const wchar_t *string) {
-    FT_GlyphSlot slot = ft_face->glyph;
-    uint32_t width    = 0;
+    uint32_t width = 0;
 
     for (; *string; string++) {
-        FT_Load_Glyph(ft_face, FT_Get_Char_Index(ft_face, *string), FT_LOAD_BITMAP_METRICS_ONLY);
-
-        width += slot->advance.x >> 6;
+        SFT_Glyph gid; //  unsigned long gid;
+        if (sft_lookup(&pFont, *string, &gid) >= 0) {
+            SFT_GMetrics mtx;
+            if (sft_gmetrics(&pFont, gid, &mtx) < 0) {
+                DEBUG_FUNCTION_LINE_ERR("bad glyph metrics");
+            }
+            width += (int32_t) mtx.advanceWidth;
+        }
     }
 
-    return width;
+    return (uint32_t) width;
 }
