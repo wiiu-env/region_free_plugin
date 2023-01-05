@@ -1,5 +1,6 @@
 #pragma once
 
+#include "schrift.h"
 #include <cstdint>
 
 // visible screen sizes
@@ -47,8 +48,9 @@ public:
 
     static void drawBitmap(uint32_t x, uint32_t y, uint32_t target_width, uint32_t target_height, const uint8_t *data);
 
+    static void drawPNG(uint32_t x, uint32_t y, const uint8_t *data);
 
-    static void initFont();
+    static bool initFont();
 
     static void deinitFont();
 

@@ -402,7 +402,7 @@ void default_lang_changed(ConfigItemMultipleValues *item, uint32_t newValue) {
         return;
     }
 
-    wups_storage_item_t* general_settings;
+    wups_storage_item_t *general_settings;
     if (WUPS_GetSubItem(root, CAT_GENERAL_SETTINGS, &general_settings) != WUPS_STORAGE_ERROR_SUCCESS) {
         return;
     }
