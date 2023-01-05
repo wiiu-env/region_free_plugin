@@ -1,5 +1,5 @@
-#include "ConfigUtils.h"
 #include "globals.h"
+#include "utils/ConfigUtils.h"
 #include "utils/logger.h"
 #include <coreinit/debug.h>
 #include <coreinit/mcp.h>

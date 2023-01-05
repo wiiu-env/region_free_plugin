@@ -1,13 +1,11 @@
 #include "DrawUtils.h"
-
-#include "utils/logger.h"
-#include "utils/utils.h"
+#include "logger.h"
+#include "utils.h"
 #include <coreinit/cache.h>
 #include <coreinit/memory.h>
 #include <coreinit/screen.h>
 #include <cstdlib>
 #include <png.h>
-
 
 // buffer width
 #define TV_WIDTH  0x500
