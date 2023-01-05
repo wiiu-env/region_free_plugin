@@ -395,26 +395,26 @@ void skip_own_region_changed(ConfigItemBoolean *item, bool newValue) {
 }
 
 void default_lang_changed(ConfigItemMultipleValues *item, uint32_t newValue) {
-    DEBUG_FUNCTION_LINE("New value in %s changed: %d", item->configID, newValue);
+    DEBUG_FUNCTION_LINE("New value in %s changed: %d", item->configId, newValue);
 
     wups_storage_item_t *root;
     if (WUPS_GetSubItem(nullptr, CAT_GENERAL_ROOT, &root) != WUPS_STORAGE_ERROR_SUCCESS) {
         return;
     }
 
-    wups_storage_item_t *general_settings;
+    wups_storage_item_t* general_settings;
     if (WUPS_GetSubItem(root, CAT_GENERAL_SETTINGS, &general_settings) != WUPS_STORAGE_ERROR_SUCCESS) {
         return;
     }
 
-    WUPS_StoreInt(general_settings, item->configID, (int32_t) newValue);
-    if (strcmp(item->configID, VAL_DEFAULT_LANG_EUR) == 0) {
+    WUPS_StoreInt(general_settings, item->configId, (int32_t) newValue);
+    if (strcmp(item->configId, VAL_DEFAULT_LANG_EUR) == 0) {
         DEBUG_FUNCTION_LINE("Updated default eur lang");
         gDefaultLangForEUR = (Lanuages) newValue;
-    } else if (strcmp(item->configID, VAL_DEFAULT_LANG_USA) == 0) {
+    } else if (strcmp(item->configId, VAL_DEFAULT_LANG_USA) == 0) {
         DEBUG_FUNCTION_LINE("Updated default usa lang");
         gDefaultLangForUSA = (Lanuages) newValue;
-    } else if (strcmp(item->configID, VAL_DEFAULT_LANG_JPN) == 0) {
+    } else if (strcmp(item->configId, VAL_DEFAULT_LANG_JPN) == 0) {
         DEBUG_FUNCTION_LINE("Updated default jpn lang");
         gDefaultLangForJPN = (Lanuages) newValue;
     }
