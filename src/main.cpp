@@ -9,6 +9,7 @@
 #include <malloc.h>
 #include <map>
 #include <nn/acp.h>
+#include <sysapp/switch.h>
 #include <sysapp/title.h>
 #include <wups.h>
 #include <wups/config/WUPSConfigItemBoolean.h>
@@ -36,6 +37,10 @@ DECL_FUNCTION(int32_t, ACPGetLaunchMetaXml, ACPMetaXml *metaxml) {
 
 DECL_FUNCTION(int, UCReadSysConfig, int IOHandle, int count, struct UCSysConfig *settings) {
     int result = real_UCReadSysConfig(IOHandle, count, settings);
+    auto upid  = OSGetUPID();
+    if (upid != SYSAPP_PFID_WII_U_MENU && upid != SYSAPP_PFID_DOWNLOAD_GAME && upid != SYSAPP_PFID_EMANUAL) {
+        return result;
+    }
 
     if (gForceSettingsEnabled) {
         if (result != 0) {
@@ -493,6 +498,11 @@ WUPS_CONFIG_CLOSED() {
 DECL_FUNCTION(int, MCP_GetSysProdSettings, int IOHandle, struct MCPSysProdSettings *settings) {
     int result = real_MCP_GetSysProdSettings(IOHandle, settings);
 
+    auto upid = OSGetUPID();
+    if (upid != SYSAPP_PFID_WII_U_MENU && upid != SYSAPP_PFID_DOWNLOAD_GAME && upid != SYSAPP_PFID_EMANUAL) {
+        return result;
+    }
+
     if (gForceSettingsEnabled) {
         if (result != 0) {
             return result;
@@ -613,6 +623,10 @@ bool getRealProductArea(MCPRegion *out) {
 }
 
 DECL_FUNCTION(uint64_t, _SYSGetSystemApplicationTitleIdByProdArea, SYSTEM_APP_ID param_1, MCPRegion param_2) {
+    auto upid = OSGetUPID();
+    if (upid != SYSAPP_PFID_WII_U_MENU && upid != SYSAPP_PFID_DOWNLOAD_GAME && upid != SYSAPP_PFID_EMANUAL) {
+        return real__SYSGetSystemApplicationTitleIdByProdArea(param_1, param_2);
+    }
     MCPRegion cur_product_area;
     if (!getRealProductArea(&cur_product_area)) {
         DEBUG_FUNCTION_LINE("Failed to get real region");
@@ -640,6 +654,6 @@ ON_APPLICATION_ENDS() {
 
 WUPS_MUST_REPLACE(ACPGetTitleMetaXmlByDevice, WUPS_LOADER_LIBRARY_NN_ACP, ACPGetTitleMetaXmlByDevice);
 WUPS_MUST_REPLACE(ACPGetLaunchMetaXml, WUPS_LOADER_LIBRARY_NN_ACP, ACPGetLaunchMetaXml);
-WUPS_MUST_REPLACE(MCP_GetSysProdSettings, WUPS_LOADER_LIBRARY_COREINIT, MCP_GetSysProdSettings);
-WUPS_MUST_REPLACE(UCReadSysConfig, WUPS_LOADER_LIBRARY_COREINIT, UCReadSysConfig);
-WUPS_MUST_REPLACE(_SYSGetSystemApplicationTitleIdByProdArea, WUPS_LOADER_LIBRARY_SYSAPP, _SYSGetSystemApplicationTitleIdByProdArea);
+WUPS_MUST_REPLACE_FOR_PROCESS(MCP_GetSysProdSettings, WUPS_LOADER_LIBRARY_COREINIT, MCP_GetSysProdSettings, WUPS_FP_TARGET_PROCESS_ALL);
+WUPS_MUST_REPLACE_FOR_PROCESS(UCReadSysConfig, WUPS_LOADER_LIBRARY_COREINIT, UCReadSysConfig, WUPS_FP_TARGET_PROCESS_ALL);
+WUPS_MUST_REPLACE_FOR_PROCESS(_SYSGetSystemApplicationTitleIdByProdArea, WUPS_LOADER_LIBRARY_SYSAPP, _SYSGetSystemApplicationTitleIdByProdArea, WUPS_FP_TARGET_PROCESS_ALL);
