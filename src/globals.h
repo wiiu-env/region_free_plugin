@@ -3,7 +3,7 @@
 #include "version.h"
 #include <coreinit/mcp.h>
 
-#define VERSION      "v0.2.2"
+#define VERSION      "v0.2.3"
 #define VERSION_FULL VERSION VERSION_EXTRA
 
 extern int gForceSettingsEnabled;
