@@ -50,7 +50,7 @@ CXXFLAGS += -DDEBUG -DVERBOSE_DEBUG -g
 CFLAGS += -DDEBUG -DVERBOSE_DEBUG -g
 endif
 
-LIBS	:= -lwut -lwups -lmappedmemory
+LIBS	:= -lwups -lwut -lmappedmemory
 
 #-------------------------------------------------------------------------------
 # list of directories containing libraries, this must be the top level
