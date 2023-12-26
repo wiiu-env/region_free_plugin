@@ -47,13 +47,13 @@ DECL_FUNCTION(int, UCReadSysConfig, int IOHandle, int count, struct UCSysConfig 
             return result;
         }
 
-        if (strcmp(settings->name, "cafe.language") == 0) {
+        if (std::string_view("cafe.language") == settings->name) {
             DEBUG_FUNCTION_LINE_VERBOSE("UCReadSysConfig: cafe.language found!");
             DEBUG_FUNCTION_LINE_VERBOSE("UCReadSysConfig: forcing language...");
             DEBUG_FUNCTION_LINE("UCReadSysConfig: original lang %d, new %d", *((int *) settings->data), gCurrentLanguage);
             *((int *) settings->data) = gCurrentLanguage;
         }
-        if (strcmp(settings->name, "cafe.cntry_reg") == 0) {
+        if (std::string_view("cafe.cntry_reg") == settings->name) {
             DEBUG_FUNCTION_LINE_VERBOSE("UCReadSysConfig: cafe.cntry_reg found!");
             DEBUG_FUNCTION_LINE_VERBOSE("UCReadSysConfig: forcing cntry_reg...");
             DEBUG_FUNCTION_LINE("UCReadSysConfig: original cntry_reg %d, new %d", *((int *) settings->data), gCurrentCountry);
@@ -83,9 +83,6 @@ DECL_FUNCTION(int, UCReadSysConfig, int IOHandle, int count, struct UCSysConfig 
 #define VAL_DEFAULT_COUNTRY_USA    "default_cntry_reg_usa"
 #define VAL_DEFAULT_COUNTRY_JPN    "default_cntry_reg_jpn"
 
-extern "C" void ACPInitialize();
-extern "C" void ACPFinalize();
-
 DECL_FUNCTION(int32_t, ACPGetTitleMetaXmlByDevice, uint32_t titleid_upper, uint32_t titleid_lower, ACPMetaXml *metaxml, uint32_t device) {
     int result = real_ACPGetTitleMetaXmlByDevice(titleid_upper, titleid_lower, metaxml, device);
     if (metaxml != nullptr) {
@@ -114,12 +111,11 @@ void bootStuff() {
         }
     }
 
-    bool forceConfigMenu = false;
-    auto *acpMetaXml     = (ACPMetaXml *) memalign(0x40, sizeof(ACPMetaXml));
-
-    memset(acpMetaXml, 0, sizeof(ACPMetaXml));
+    bool forceConfigMenu   = false;
+    auto *acpMetaXml       = (ACPMetaXml *) memalign(0x40, sizeof(ACPMetaXml));
     uint32_t regionFromXML = 0;
     if (acpMetaXml) {
+        memset(acpMetaXml, 0, sizeof(ACPMetaXml));
         ACPInitialize();
         auto res = ACPGetTitleMetaXml(OSGetTitleID(), acpMetaXml);
         if (res >= 0) {
@@ -208,132 +204,114 @@ void bootStuff() {
             }
         }
     }
-
-    wups_storage_item_t *root = nullptr;
-    auto resa                 = WUPS_GetSubItem(nullptr, CAT_GENERAL_ROOT, &root);
-    if (resa != WUPS_STORAGE_ERROR_SUCCESS) {
+    WUPSStorageError storageError;
+    auto rootStorage = WUPSStorageAPI::GetSubItem(CAT_GENERAL_ROOT, storageError);
+    if (!rootStorage) {
         DEBUG_FUNCTION_LINE_ERR("Failed to read %s subitem", CAT_GENERAL_ROOT);
         return;
     }
-
-    wups_storage_item_t *title_settings;
-    if (WUPS_GetSubItem(root, CAT_TITLE_SETTINGS, &title_settings) != WUPS_STORAGE_ERROR_SUCCESS) {
-        if (WUPS_CreateSubItem(root, CAT_TITLE_SETTINGS, &title_settings) != WUPS_STORAGE_ERROR_SUCCESS) {
-            DEBUG_FUNCTION_LINE_ERR("WUPS_CreateSubItem %s failed", CAT_TITLE_SETTINGS);
-            return;
-        }
+    auto titleSettings = rootStorage->GetOrCreateSubItem(CAT_TITLE_SETTINGS, storageError);
+    if (!titleSettings) {
+        DEBUG_FUNCTION_LINE_ERR("WUPS_CreateSubItem %s failed", CAT_TITLE_SETTINGS);
+        return;
     }
 
     char buffer[18];
     snprintf(buffer, 17, "%016llX", OSGetTitleID());
 
-    wups_storage_item_t *curTitleItem;
-    if (WUPS_GetSubItem(title_settings, buffer, &curTitleItem) != WUPS_STORAGE_ERROR_SUCCESS) {
-        if (WUPS_CreateSubItem(title_settings, buffer, &curTitleItem) != WUPS_STORAGE_ERROR_SUCCESS) {
-            DEBUG_FUNCTION_LINE_ERR("WUPS_CreateSubItem %s failed", buffer);
+    auto curTitle = titleSettings->GetOrCreateSubItem(buffer, storageError);
+
+    if (!curTitle) {
+        DEBUG_FUNCTION_LINE_ERR("WUPS_CreateSubItem %s failed", buffer);
+        return;
+    }
+
+    storageError = curTitle->GetOrStoreDefault(VAL_LANGUAGE, gCurrentLanguage, gCurrentLanguage);
+    if (storageError != WUPS_STORAGE_ERROR_SUCCESS) {
+        DEBUG_FUNCTION_LINE_ERR("Failed to get or store current Language");
+    }
+    storageError = curTitle->GetOrStoreDefault(VAL_PRODUCT_AREA, gCurrentProductArea, gCurrentProductArea);
+    if (storageError != WUPS_STORAGE_ERROR_SUCCESS) {
+        DEBUG_FUNCTION_LINE_ERR("Failed to get or store current Language");
+    }
+
+    bool isWiiUMenu = false;
+    if (OSGetTitleID() == 0x0005001010040000L || // Wii U Menu JPN
+        OSGetTitleID() == 0x0005001010040100L || // Wii U Menu USA
+        OSGetTitleID() == 0x0005001010040200L) { // Wii U Menu EUR
+        isWiiUMenu = true;
+    }
+
+    bool showMenu = !gAutoDetection;
+
+    if (real_product_area_valid && (regionFromXML & real_product_area) == real_product_area) {
+        if (gSkipOwnRegion && !forceConfigMenu) {
+            // If the want to skip checks for own region, and we were able
+            // to tell the region of the current title don't show the menu.
+            showMenu = false;
             return;
         }
     }
 
-    if (curTitleItem != nullptr) {
-        if (WUPS_GetInt(curTitleItem, VAL_LANGUAGE, (int32_t *) &gCurrentLanguage) != WUPS_STORAGE_ERROR_SUCCESS) {
-            WUPS_StoreInt(curTitleItem, VAL_LANGUAGE, gDefaultLanguage);
-            gCurrentLanguage = gDefaultLanguage;
-        }
-
-        /*
-        if (WUPS_GetInt(curTitleItem, VAL_COUNTRY, (int32_t *) &gCurrentCountry) != WUPS_STORAGE_ERROR_SUCCESS) {
-            WUPS_StoreInt(curTitleItem, VAL_COUNTRY, gDefaultCountry);
-            gCurrentCountry = gDefaultCountry;
-        }*/
-
-
-        if (WUPS_GetInt(curTitleItem, VAL_PRODUCT_AREA, (int32_t *) &gCurrentProductArea) != WUPS_STORAGE_ERROR_SUCCESS) {
-            WUPS_StoreInt(curTitleItem, VAL_PRODUCT_AREA, gDefaultProductArea);
-            gCurrentProductArea = gDefaultProductArea;
-        }
-
-        bool isWiiUMenu = false;
-        if (OSGetTitleID() == 0x0005001010040000L || // Wii U Menu JPN
-            OSGetTitleID() == 0x0005001010040100L || // Wii U Menu USA
-            OSGetTitleID() == 0x0005001010040200L) { // Wii U Menu EUR
-            isWiiUMenu = true;
-        }
-
-        bool showMenu = !gAutoDetection;
-
-        if (real_product_area_valid && (regionFromXML & real_product_area) == real_product_area) {
-            if (gSkipOwnRegion && !forceConfigMenu) {
-                // If the want to skip checks for own region and we were able
-                // to tell the region of the current title don't show the menu.
-                showMenu = false;
-                return;
-            }
-        }
-
-        // this overrides the current settings
-        if (forceConfigMenu || (!isWiiUMenu && showMenu)) {
-            ConfigUtils::openConfigMenu();
-            // Save settings to storage
-            WUPS_StoreInt(curTitleItem, VAL_LANGUAGE, gCurrentLanguage);
-            //WUPS_StoreInt(curTitleItem, VAL_COUNTRY, gCurrentCountry);
-            WUPS_StoreInt(curTitleItem, VAL_PRODUCT_AREA, gCurrentProductArea);
-        }
-
-        DEBUG_FUNCTION_LINE("Language will be force to %d", gCurrentLanguage);
-        DEBUG_FUNCTION_LINE("Country will be force to %d", gDefaultCountry);
-        DEBUG_FUNCTION_LINE("Product Area will be forced to %d", gCurrentProductArea);
+    // this overrides the current settings
+    if (forceConfigMenu || (!isWiiUMenu && showMenu)) {
+        ConfigUtils::openConfigMenu();
+        // Save settings to storage
+        curTitle->Store(VAL_LANGUAGE, gCurrentLanguage);
+        curTitle->Store(VAL_PRODUCT_AREA, gCurrentProductArea);
     }
+
+    DEBUG_FUNCTION_LINE("Language will be force to %d", gCurrentLanguage);
+    DEBUG_FUNCTION_LINE("Country will be force to %d", gDefaultCountry);
+    DEBUG_FUNCTION_LINE("Product Area will be forced to %d", gCurrentProductArea);
 }
+
+std::optional<WUPSStorageSubItem> rootSettingsStorage    = {};
+std::optional<WUPSStorageSubItem> generalSettingsStorage = {};
 
 ON_APPLICATION_START() {
     initLogging();
 
-    WUPS_OpenStorage();
-
-    wups_storage_item_t *root;
-    if (WUPS_GetSubItem(nullptr, CAT_GENERAL_ROOT, &root) != WUPS_STORAGE_ERROR_SUCCESS) {
-        WUPS_CreateSubItem(nullptr, CAT_GENERAL_ROOT, &root);
+    WUPSStorageError storageError;
+    rootSettingsStorage = WUPSStorageAPI::GetOrCreateSubItem(CAT_GENERAL_ROOT, storageError);
+    if (!rootSettingsStorage) {
+        DEBUG_FUNCTION_LINE_ERR("Failed to get or create %s subitem", CAT_GENERAL_ROOT);
     }
 
-    wups_storage_item_t *general_settings;
-    if (WUPS_GetSubItem(root, CAT_GENERAL_SETTINGS, &general_settings) != WUPS_STORAGE_ERROR_SUCCESS) {
-        WUPS_CreateSubItem(root, CAT_GENERAL_SETTINGS, &general_settings);
-    }
+    generalSettingsStorage = rootSettingsStorage->GetOrCreateSubItem(CAT_GENERAL_SETTINGS, storageError);
+    if (!generalSettingsStorage) {
+        DEBUG_FUNCTION_LINE_ERR("Failed to get or create %s subitem", CAT_GENERAL_SETTINGS);
+    } else {
+        if ((storageError = generalSettingsStorage->GetOrStoreDefault(VAL_AUTO_DETECTION, gAutoDetection, DEFAULT_AUTO_DETECTION_VALUE)) != WUPS_STORAGE_ERROR_SUCCESS) {
+            DEBUG_FUNCTION_LINE_WARN("Failed to get or store default: %s", WUPSStorageAPI::GetStatusStr(storageError).data());
+        }
+        if ((storageError = generalSettingsStorage->GetOrStoreDefault(VAL_PREFER_SYSTEM_SETTINGS, gPreferSystemSettings, DEFAULT_PREFER_SYSTEM_SETTINGS)) != WUPS_STORAGE_ERROR_SUCCESS) {
+            DEBUG_FUNCTION_LINE_WARN("Failed to get or store default: %s", WUPSStorageAPI::GetStatusStr(storageError).data());
+        }
+        if ((storageError = generalSettingsStorage->GetOrStoreDefault(VAL_SKIP_OWN_REGION, gSkipOwnRegion, DEFAULT_SKIP_OWN_REGION)) != WUPS_STORAGE_ERROR_SUCCESS) {
+            DEBUG_FUNCTION_LINE_WARN("Failed to get or store default: %s", WUPSStorageAPI::GetStatusStr(storageError).data());
+        }
 
-    if (WUPS_GetInt(general_settings, VAL_AUTO_DETECTION, (int32_t *) &gAutoDetection) != WUPS_STORAGE_ERROR_SUCCESS) {
-        WUPS_StoreInt(general_settings, VAL_AUTO_DETECTION, gAutoDetection);
-    }
-    if (WUPS_GetInt(general_settings, VAL_PREFER_SYSTEM_SETTINGS, (int32_t *) &gPreferSystemSettings) != WUPS_STORAGE_ERROR_SUCCESS) {
-        WUPS_StoreInt(general_settings, VAL_PREFER_SYSTEM_SETTINGS, gPreferSystemSettings);
-    }
+        if ((storageError = generalSettingsStorage->GetOrStoreDefault(VAL_DEFAULT_LANG_EUR, gDefaultLangForEUR, DEFAULT_LANG_FOR_EUR)) != WUPS_STORAGE_ERROR_SUCCESS) {
+            DEBUG_FUNCTION_LINE_WARN("Failed to get or store default: %s", WUPSStorageAPI::GetStatusStr(storageError).data());
+        }
+        if ((storageError = generalSettingsStorage->GetOrStoreDefault(VAL_DEFAULT_COUNTRY_EUR, gDefaultCountryForEUR, DEFAULT_COUNTRY_FOR_EUR)) != WUPS_STORAGE_ERROR_SUCCESS) {
+            DEBUG_FUNCTION_LINE_WARN("Failed to get or store default: %s", WUPSStorageAPI::GetStatusStr(storageError).data());
+        }
 
-    if (WUPS_GetInt(general_settings, VAL_SKIP_OWN_REGION, (int32_t *) &gSkipOwnRegion) != WUPS_STORAGE_ERROR_SUCCESS) {
-        WUPS_StoreInt(general_settings, VAL_SKIP_OWN_REGION, gSkipOwnRegion);
-    }
+        if ((storageError = generalSettingsStorage->GetOrStoreDefault(VAL_DEFAULT_LANG_USA, gDefaultLangForUSA, DEFAULT_LANG_FOR_USA)) != WUPS_STORAGE_ERROR_SUCCESS) {
+            DEBUG_FUNCTION_LINE_WARN("Failed to get or store default: %s", WUPSStorageAPI::GetStatusStr(storageError).data());
+        }
+        if ((storageError = generalSettingsStorage->GetOrStoreDefault(VAL_DEFAULT_COUNTRY_USA, gDefaultCountryForUSA, DEFAULT_COUNTRY_FOR_USA)) != WUPS_STORAGE_ERROR_SUCCESS) {
+            DEBUG_FUNCTION_LINE_WARN("Failed to get or store default: %s", WUPSStorageAPI::GetStatusStr(storageError).data());
+        }
 
-    if (WUPS_GetInt(general_settings, VAL_DEFAULT_LANG_EUR, (int32_t *) &gDefaultLangForEUR) != WUPS_STORAGE_ERROR_SUCCESS) {
-        WUPS_StoreInt(general_settings, VAL_DEFAULT_LANG_EUR, gDefaultLangForEUR);
-    }
-
-    if (WUPS_GetInt(general_settings, VAL_DEFAULT_COUNTRY_EUR, &gDefaultCountryForEUR) != WUPS_STORAGE_ERROR_SUCCESS) {
-        WUPS_StoreInt(general_settings, VAL_DEFAULT_COUNTRY_EUR, gDefaultCountryForEUR);
-    }
-
-    if (WUPS_GetInt(general_settings, VAL_DEFAULT_LANG_USA, (int32_t *) &gDefaultLangForUSA) != WUPS_STORAGE_ERROR_SUCCESS) {
-        WUPS_StoreInt(general_settings, VAL_DEFAULT_LANG_USA, gDefaultLangForUSA);
-    }
-
-    if (WUPS_GetInt(general_settings, VAL_DEFAULT_COUNTRY_USA, &gDefaultCountryForUSA) != WUPS_STORAGE_ERROR_SUCCESS) {
-        WUPS_StoreInt(general_settings, VAL_DEFAULT_COUNTRY_USA, gDefaultCountryForUSA);
-    }
-
-    if (WUPS_GetInt(general_settings, VAL_DEFAULT_LANG_JPN, (int32_t *) &gDefaultLangForJPN) != WUPS_STORAGE_ERROR_SUCCESS) {
-        WUPS_StoreInt(general_settings, VAL_DEFAULT_LANG_JPN, gDefaultLangForJPN);
-    }
-
-    if (WUPS_GetInt(general_settings, VAL_DEFAULT_COUNTRY_JPN, &gDefaultCountryForJPN) != WUPS_STORAGE_ERROR_SUCCESS) {
-        WUPS_StoreInt(general_settings, VAL_DEFAULT_COUNTRY_JPN, gDefaultCountryForJPN);
+        if ((storageError = generalSettingsStorage->GetOrStoreDefault(VAL_DEFAULT_LANG_JPN, gDefaultLangForJPN, DEFAULT_LANG_FOR_JPN)) != WUPS_STORAGE_ERROR_SUCCESS) {
+            DEBUG_FUNCTION_LINE_WARN("Failed to get or store default: %s", WUPSStorageAPI::GetStatusStr(storageError).data());
+        }
+        if ((storageError = generalSettingsStorage->GetOrStoreDefault(VAL_DEFAULT_COUNTRY_JPN, gDefaultCountryForJPN, DEFAULT_COUNTRY_FOR_JPN)) != WUPS_STORAGE_ERROR_SUCCESS) {
+            DEBUG_FUNCTION_LINE_WARN("Failed to get or store default: %s", WUPSStorageAPI::GetStatusStr(storageError).data());
+        }
     }
 
     gForceSettingsEnabled = 1;
@@ -345,154 +323,114 @@ ON_APPLICATION_START() {
 
     bootStuff();
 
-    WUPS_CloseStorage();
+    WUPSStorageAPI::SaveStorage();
 }
 
-void auto_detection_changed(ConfigItemBoolean *item, bool newValue) {
-    DEBUG_FUNCTION_LINE("New value in auto_detection changed: %d", newValue);
+void bool_item_changed(ConfigItemBoolean *item, bool newValue) {
+    DEBUG_FUNCTION_LINE("Value changed for %s: %d", item->identifier ? item->identifier : "[UNKNOWN]", newValue);
 
-    wups_storage_item_t *root;
-    if (WUPS_GetSubItem(nullptr, CAT_GENERAL_ROOT, &root) != WUPS_STORAGE_ERROR_SUCCESS) {
-        return;
+    if (std::string_view(VAL_DEFAULT_LANG_USA) == item->identifier) {
+        gAutoDetection = newValue;
+        if (generalSettingsStorage) {
+            generalSettingsStorage->Store(VAL_AUTO_DETECTION, gAutoDetection);
+        }
+    } else if (std::string_view(VAL_PREFER_SYSTEM_SETTINGS) == item->identifier) {
+        gPreferSystemSettings = newValue;
+        if (generalSettingsStorage) {
+            generalSettingsStorage->Store(VAL_PREFER_SYSTEM_SETTINGS, gPreferSystemSettings);
+        }
+    } else if (std::string_view(VAL_SKIP_OWN_REGION) == item->identifier) {
+        gPreferSystemSettings = newValue;
+        if (generalSettingsStorage) {
+            generalSettingsStorage->Store(VAL_SKIP_OWN_REGION, gSkipOwnRegion);
+        }
     }
-
-    wups_storage_item_t *general_settings;
-    if (WUPS_GetSubItem(root, CAT_GENERAL_SETTINGS, &general_settings) != WUPS_STORAGE_ERROR_SUCCESS) {
-        return;
-    }
-
-    WUPS_StoreInt(general_settings, VAL_AUTO_DETECTION, newValue);
-    gAutoDetection = newValue;
-}
-
-void prefer_system_changed(ConfigItemBoolean *item, bool newValue) {
-    DEBUG_FUNCTION_LINE("New value in prefer_system_settings changed: %d", newValue);
-
-    wups_storage_item_t *root;
-    if (WUPS_GetSubItem(nullptr, CAT_GENERAL_ROOT, &root) != WUPS_STORAGE_ERROR_SUCCESS) {
-        return;
-    }
-
-    wups_storage_item_t *general_settings;
-    if (WUPS_GetSubItem(root, CAT_GENERAL_SETTINGS, &general_settings) != WUPS_STORAGE_ERROR_SUCCESS) {
-        return;
-    }
-
-    WUPS_StoreInt(general_settings, VAL_PREFER_SYSTEM_SETTINGS, newValue);
-    gPreferSystemSettings = newValue;
-}
-
-void skip_own_region_changed(ConfigItemBoolean *item, bool newValue) {
-    DEBUG_FUNCTION_LINE("New value in skip_own_region_changed changed: %d", newValue);
-
-    wups_storage_item_t *root;
-    if (WUPS_GetSubItem(nullptr, CAT_GENERAL_ROOT, &root) != WUPS_STORAGE_ERROR_SUCCESS) {
-        return;
-    }
-
-    wups_storage_item_t *general_settings;
-    if (WUPS_GetSubItem(root, CAT_GENERAL_SETTINGS, &general_settings) != WUPS_STORAGE_ERROR_SUCCESS) {
-        return;
-    }
-
-    WUPS_StoreInt(general_settings, VAL_SKIP_OWN_REGION, newValue);
-    gPreferSystemSettings = newValue;
 }
 
 void default_lang_changed(ConfigItemMultipleValues *item, uint32_t newValue) {
     DEBUG_FUNCTION_LINE("New value in %s changed: %d", item->configId, newValue);
 
-    wups_storage_item_t *root;
-    if (WUPS_GetSubItem(nullptr, CAT_GENERAL_ROOT, &root) != WUPS_STORAGE_ERROR_SUCCESS) {
-        return;
-    }
-
-    wups_storage_item_t *general_settings;
-    if (WUPS_GetSubItem(root, CAT_GENERAL_SETTINGS, &general_settings) != WUPS_STORAGE_ERROR_SUCCESS) {
-        return;
-    }
-
-    WUPS_StoreInt(general_settings, item->configId, (int32_t) newValue);
-    if (strcmp(item->configId, VAL_DEFAULT_LANG_EUR) == 0) {
+    if (std::string_view(VAL_DEFAULT_LANG_EUR) == item->identifier) {
         DEBUG_FUNCTION_LINE("Updated default eur lang");
         gDefaultLangForEUR = (Lanuages) newValue;
-    } else if (strcmp(item->configId, VAL_DEFAULT_LANG_USA) == 0) {
+    } else if (std::string_view(VAL_DEFAULT_LANG_USA) == item->identifier) {
         DEBUG_FUNCTION_LINE("Updated default usa lang");
         gDefaultLangForUSA = (Lanuages) newValue;
-    } else if (strcmp(item->configId, VAL_DEFAULT_LANG_JPN) == 0) {
+    } else if (std::string_view(VAL_DEFAULT_LANG_JPN) == item->identifier) {
         DEBUG_FUNCTION_LINE("Updated default jpn lang");
         gDefaultLangForJPN = (Lanuages) newValue;
+    } else {
+        DEBUG_FUNCTION_LINE_WARN("Unexpected identifier for default_lang_changed");
+        return;
+    }
+    if (generalSettingsStorage) {
+        generalSettingsStorage->Store(item->identifier, (int32_t) newValue);
+    } else {
+        DEBUG_FUNCTION_LINE_WARN("Failed to store into general settings: sub-item was nullopt");
     }
 }
 
-void getConfigInfoForLangMap(std::map<Lanuages, const char *> &curLangMap, ConfigItemMultipleValuesPair *pair, uint32_t default_lang, uint32_t *default_index, uint32_t *len) {
-    uint32_t i = 0;
-    for (auto &curEntry : curLangMap) {
-        if (default_lang == curEntry.first) {
-            *default_index = i;
-        }
-        pair[i].value     = curEntry.first;
-        pair[i].valueName = (char *) curEntry.second;
-        i++;
+static WUPSConfigAPICallbackStatus ConfigMenuOpenedCallback(WUPSConfigCategoryHandle rootHandle) {
+    try {
+        WUPSConfigCategory root = WUPSConfigCategory(rootHandle);
+
+        root.add(WUPSConfigItemBoolean::Create(VAL_DEFAULT_LANG_USA, "Auto detect region/language",
+                                               DEFAULT_AUTO_DETECTION_VALUE, gAutoDetection,
+                                               &bool_item_changed));
+        root.add(WUPSConfigItemBoolean::Create(VAL_SKIP_OWN_REGION, "Force auto detection for in-region titles",
+                                               DEFAULT_SKIP_OWN_REGION, gSkipOwnRegion,
+                                               &bool_item_changed));
+        root.add(WUPSConfigItemBoolean::Create(VAL_PREFER_SYSTEM_SETTINGS, "Prefer system settings for in-region titles",
+                                               DEFAULT_PREFER_SYSTEM_SETTINGS, gPreferSystemSettings,
+                                               &bool_item_changed));
+
+        constexpr WUPSConfigItemMultipleValues::ValuePair eur_lang_map[] = {
+                {LANG_ENGLISH, "English"},
+                {LANG_FRANCAIS, "Francais"},
+                {LANG_DEUTSCH, "Deutsch"},
+                {LANG_ITALIANO, "Italiano"},
+                {LANG_ESPANOL, "Espanol"},
+                {LANG_NEDERLANDS, "Nederlands"},
+                {LANG_PORTUGUES, "Portugues"},
+                {LANG_RUSSKI, "Russki"},
+        };
+
+        root.add(WUPSConfigItemMultipleValues::CreateFromValue(VAL_DEFAULT_LANG_EUR, "Default language for EUR",
+                                                               DEFAULT_LANG_FOR_EUR, gDefaultLangForEUR,
+                                                               eur_lang_map,
+                                                               default_lang_changed));
+
+        constexpr WUPSConfigItemMultipleValues::ValuePair usa_lang_map[] = {
+                {LANG_ENGLISH, "English"},
+                {LANG_FRANCAIS, "Francais"},
+                {LANG_ESPANOL, "Espanol"},
+                {LANG_PORTUGUES, "Portugues"}};
+
+        root.add(WUPSConfigItemMultipleValues::CreateFromValue(VAL_DEFAULT_LANG_USA, "Default language for USA",
+                                                               DEFAULT_LANG_FOR_USA, gDefaultLangForUSA,
+                                                               usa_lang_map,
+                                                               default_lang_changed));
+
+    } catch (std::exception &e) {
+        OSReport("Exception T_T : %s\n", e.what());
+        return WUPSCONFIG_API_CALLBACK_RESULT_ERROR;
     }
-    *len = i;
+    return WUPSCONFIG_API_CALLBACK_RESULT_SUCCESS;
 }
 
-WUPS_GET_CONFIG() {
-    // We open the storage so we can persist the configuration the user did.
-    WUPS_OpenStorage();
-
-    WUPSConfigHandle config;
-    WUPSConfig_CreateHandled(&config, "Region Free Plugin");
-
-    WUPSConfigCategoryHandle cat;
-    WUPSConfig_AddCategoryByNameHandled(config, "Settings", &cat);
-
-    WUPSConfigItemBoolean_AddToCategoryHandled(config, cat, VAL_DEFAULT_LANG_USA, "Auto detect region/language", gAutoDetection, &auto_detection_changed);
-    WUPSConfigItemBoolean_AddToCategoryHandled(config, cat, VAL_SKIP_OWN_REGION, "Force auto detection for in-region titles", gSkipOwnRegion, &skip_own_region_changed);
-    WUPSConfigItemBoolean_AddToCategoryHandled(config, cat, VAL_PREFER_SYSTEM_SETTINGS, "Prefer system settings for in-region titles", gPreferSystemSettings, &prefer_system_changed);
-
-    std::map<Lanuages, const char *> eur_lang_map{
-            {LANG_ENGLISH, "English"},
-            {LANG_FRANCAIS, "Francais"},
-            {LANG_DEUTSCH, "Deutsch"},
-            {LANG_ITALIANO, "Italiano"},
-            {LANG_ESPANOL, "Espanol"},
-            {LANG_NEDERLANDS, "Nederlands"},
-            {LANG_PORTUGUES, "Portugues"},
-            {LANG_RUSSKI, "Russki"},
-    };
-
-    std::map<Lanuages, const char *> usa_lang_map{
-            {LANG_ENGLISH, "English"},
-            {LANG_FRANCAIS, "Francais"},
-            {LANG_ESPANOL, "Espanol"},
-            {LANG_PORTUGUES, "Portugues"}};
-
-    ConfigItemMultipleValuesPair lang_eur_pair[eur_lang_map.size()];
-    uint32_t number_lang_eur_values = 0;
-    uint32_t default_index_eur      = 0;
-
-    getConfigInfoForLangMap(eur_lang_map, lang_eur_pair, gDefaultLangForEUR, &default_index_eur, &number_lang_eur_values);
-
-    WUPSConfigItemMultipleValues_AddToCategoryHandled(config, cat, VAL_DEFAULT_LANG_EUR, "Default language for EUR", default_index_eur, lang_eur_pair, number_lang_eur_values,
-                                                      &default_lang_changed);
-
-    ConfigItemMultipleValuesPair lang_usa_pair[eur_lang_map.size()];
-    uint32_t number_lang_usa_values = 0;
-    uint32_t default_index_usa      = 0;
-
-    getConfigInfoForLangMap(usa_lang_map, lang_usa_pair, gDefaultLangForUSA, &default_index_usa, &number_lang_usa_values);
-
-    WUPSConfigItemMultipleValues_AddToCategoryHandled(config, cat, VAL_DEFAULT_LANG_USA, "Default language for USA", default_index_usa, lang_usa_pair, number_lang_usa_values,
-                                                      &default_lang_changed);
-
-    return config;
-}
-
-WUPS_CONFIG_CLOSED() {
+static void ConfigMenuClosedCallback() {
     // Save all changes
-    WUPS_CloseStorage();
+    WUPSStorageAPI::SaveStorage();
+}
+
+INITIALIZE_PLUGIN() {
+    initLogging();
+
+    WUPSConfigAPIOptionsV1 configOptions = {.name = "Region Free Plugin"};
+    if (WUPSConfigAPI_Init(configOptions, ConfigMenuOpenedCallback, ConfigMenuClosedCallback) != WUPSCONFIG_API_RESULT_SUCCESS) {
+        DEBUG_FUNCTION_LINE_ERR("Failed to init config api");
+    }
+    deinitLogging();
 }
 
 DECL_FUNCTION(int, MCP_GetSysProdSettings, int IOHandle, struct MCPSysProdSettings *settings) {
