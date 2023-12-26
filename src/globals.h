@@ -20,10 +20,15 @@ enum Lanuages {
     LANG_RUSSKI     = 10,
 };
 
+#define DEFAULT_AUTO_DETECTION_VALUE true
+extern bool gAutoDetection;
 
-extern int gPreferSystemSettings;
-extern int gSkipOwnRegion;
-extern int gAutoDetection;
+#define DEFAULT_PREFER_SYSTEM_SETTINGS true
+extern bool gPreferSystemSettings;
+
+#define DEFAULT_SKIP_OWN_REGION true
+extern bool gSkipOwnRegion;
+
 extern Lanuages gDefaultLanguage;
 extern int32_t gDefaultCountry;
 extern MCPRegion gDefaultProductArea;
@@ -32,9 +37,20 @@ extern Lanuages gCurrentLanguage;
 extern int32_t gCurrentCountry;
 extern MCPRegion gCurrentProductArea;
 
+#define DEFAULT_LANG_FOR_EUR    LANG_ENGLISH
+#define DEFAULT_COUNTRY_FOR_EUR 110
+
+#define DEFAULT_LANG_FOR_USA    LANG_ENGLISH
+#define DEFAULT_COUNTRY_FOR_USA 49
+
+#define DEFAULT_LANG_FOR_JPN    LANG_JAPANESE
+#define DEFAULT_COUNTRY_FOR_JPN 1
+
 extern Lanuages gDefaultLangForEUR;
 extern int32_t gDefaultCountryForEUR;
+
 extern Lanuages gDefaultLangForUSA;
 extern int32_t gDefaultCountryForUSA;
+
 extern Lanuages gDefaultLangForJPN;
 extern int32_t gDefaultCountryForJPN;
