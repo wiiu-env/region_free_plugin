@@ -142,7 +142,6 @@ void ConfigUtils::displayMenu() {
             {MCP_REGION_EUROPE, 2},
     };
 
-
     std::map<int32_t, MCPRegion> region_index_to_map{
             {0, MCP_REGION_JAPAN},
             {1, MCP_REGION_USA},
@@ -150,9 +149,9 @@ void ConfigUtils::displayMenu() {
     };
 
     auto curSelectedRegion = gCurrentProductArea;
-    DEBUG_FUNCTION_LINE("Current %d", curSelectedRegion);
+    DEBUG_FUNCTION_LINE_VERBOSE("Current %d", curSelectedRegion);
 
-    std::map<Lanuages, const char *> lang_map{
+    std::map<Languages, const char *> lang_map{
             {LANG_JAPANESE, "Japanese"},
             {LANG_ENGLISH, "English"},
             {LANG_FRANCAIS, "Francais"},
@@ -163,7 +162,7 @@ void ConfigUtils::displayMenu() {
             {LANG_PORTUGUES, "Portugues"},
             {LANG_RUSSKI, "Russki"},
     };
-    std::map<Lanuages, int32_t> lang_map_to_index{
+    std::map<Languages, int32_t> lang_map_to_index{
             {LANG_JAPANESE, 0},
             {LANG_ENGLISH, 1},
             {LANG_FRANCAIS, 2},
@@ -174,7 +173,7 @@ void ConfigUtils::displayMenu() {
             {LANG_PORTUGUES, 7},
             {LANG_RUSSKI, 8},
     };
-    std::map<int32_t, Lanuages> lang_index_to_map{
+    std::map<int32_t, Languages> lang_index_to_map{
             {0, LANG_JAPANESE},
             {1, LANG_ENGLISH},
             {2, LANG_FRANCAIS},
@@ -247,8 +246,8 @@ void ConfigUtils::displayMenu() {
             if (curRegionIndex < 0) {
                 curRegionIndex = 0;
             }
-            if (curRegionIndex >= region_map.size()) {
-                curRegionIndex = region_map.size() - 1;
+            if (curRegionIndex >= (int32_t) region_map.size()) {
+                curRegionIndex = (int32_t) region_map.size() - 1;
             }
             gCurrentProductArea = region_index_to_map[curRegionIndex];
             curSelectedRegion   = gCurrentProductArea;
@@ -263,8 +262,8 @@ void ConfigUtils::displayMenu() {
             if (curLangIndex < 0) {
                 curLangIndex = 0;
             }
-            if (curLangIndex >= lang_map.size()) {
-                curLangIndex = lang_map.size() - 1;
+            if (curLangIndex >= (int32_t) lang_map.size()) {
+                curLangIndex = (int32_t) lang_map.size() - 1;
             }
             gCurrentLanguage    = lang_index_to_map[curLangIndex];
             curSelectedLanguage = gCurrentLanguage;
@@ -293,7 +292,7 @@ void ConfigUtils::displayMenu() {
             std::string regionText = region_map[curSelectedRegion];
             if (selectedBtn == 0) {
                 DrawUtils::drawRect(16, index, SCREEN_WIDTH - 16 * 2, 44, 4, COLOR_BORDER_HIGHLIGHTED);
-                regionText = string_format("%s%s%s", curRegionIndex > 0 ? "< " : "  ", regionText.c_str(), curRegionIndex < region_map.size() - 1 ? " >" : "").c_str();
+                regionText = string_format("%s%s%s", curRegionIndex > 0 ? "< " : "  ", regionText.c_str(), curRegionIndex < (int32_t) region_map.size() - 1 ? " >" : "");
             } else {
                 DrawUtils::drawRect(16, index, SCREEN_WIDTH - 16 * 2, 44, 2, COLOR_BORDER);
             }
@@ -305,7 +304,7 @@ void ConfigUtils::displayMenu() {
             std::string languageText = lang_map[curSelectedLanguage];
             if (selectedBtn == 1) {
                 DrawUtils::drawRect(16, index, SCREEN_WIDTH - 16 * 2, 44, 4, COLOR_BORDER_HIGHLIGHTED);
-                languageText = string_format("%s%s%s", curLangIndex > 0 ? "< " : "  ", languageText.c_str(), curLangIndex < lang_map.size() - 1 ? " >" : "").c_str();
+                languageText = string_format("%s%s%s", curLangIndex > 0 ? "< " : "  ", languageText.c_str(), curLangIndex < (int32_t) lang_map.size() - 1 ? " >" : "");
             } else {
                 DrawUtils::drawRect(16, index, SCREEN_WIDTH - 16 * 2, 44, 2, COLOR_BORDER);
             }
