@@ -112,6 +112,11 @@ void SetupRegionSpoofing() {
         // Save (updated) title settings to the storage
         if (!saveTitleRegionInfo({OSGetTitleID(), gCurrentLanguage, gCurrentProductArea})) {
             DEBUG_FUNCTION_LINE_ERR("Failed to save current title region info to storage");
+        } else {
+            WUPSStorageError err;
+            if ((err = WUPSStorageAPI::SaveStorage()) != WUPS_STORAGE_ERROR_SUCCESS) {
+                DEBUG_FUNCTION_LINE_ERR("Failed to save storage: %s (%d)", WUPSStorageAPI_GetStatusStr(err), err);
+            }
         }
     }
 
