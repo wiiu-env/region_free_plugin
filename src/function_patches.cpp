@@ -62,6 +62,16 @@ DECL_FUNCTION(int, MCP_GetSysProdSettings, int IOHandle, MCPSysProdSettings *set
     return result;
 }
 
+DECL_FUNCTION(uint64_t, _SYSGetSystemApplicationTitleIdByProdArea, SYSTEM_APP_ID param_1, MCPRegion param_2) {
+    auto upid = OSGetUPID();
+    if (upid != SYSAPP_PFID_WII_U_MENU && upid != SYSAPP_PFID_DOWNLOAD_GAME && upid != SYSAPP_PFID_EMANUAL) {
+        return real__SYSGetSystemApplicationTitleIdByProdArea(param_1, param_2);
+    }
+
+    return real__SYSGetSystemApplicationTitleIdByProdArea(param_1, gRealRegionOpt.value_or(param_2));
+}
+
+WUPS_MUST_REPLACE_FOR_PROCESS(_SYSGetSystemApplicationTitleIdByProdArea, WUPS_LOADER_LIBRARY_SYSAPP, _SYSGetSystemApplicationTitleIdByProdArea, WUPS_FP_TARGET_PROCESS_ALL);
 WUPS_MUST_REPLACE(ACPGetTitleMetaXmlByDevice, WUPS_LOADER_LIBRARY_NN_ACP, ACPGetTitleMetaXmlByDevice);
 WUPS_MUST_REPLACE(ACPGetLaunchMetaXml, WUPS_LOADER_LIBRARY_NN_ACP, ACPGetLaunchMetaXml);
 WUPS_MUST_REPLACE_FOR_PROCESS(MCP_GetSysProdSettings, WUPS_LOADER_LIBRARY_COREINIT, MCP_GetSysProdSettings, WUPS_FP_TARGET_PROCESS_ALL);
