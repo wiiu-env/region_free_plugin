@@ -42,16 +42,20 @@ void SetupRegionSpoofing() {
      */
 
     bool forceOpenConfigMenu = false;
-    bool isWiiUMenu          = false;
-    if (OSGetTitleID() == 0x0005001010040000L || // Wii U Menu JPN
-        OSGetTitleID() == 0x0005001010040100L || // Wii U Menu USA
-        OSGetTitleID() == 0x0005001010040200L) { // Wii U Menu EUR
-        isWiiUMenu = true;
+    bool isWiiUMenuOrHS      = false;
+    auto curTitleID          = OSGetTitleID();
+    if (curTitleID == 0x0005001010040000L || // Wii U Menu JPN
+        curTitleID == 0x0005001010040100L || // Wii U Menu USA
+        curTitleID == 0x0005001010040200L || // Wii U Menu EUR
+        curTitleID == 0x000500101004E000L || // Health and Safety Information JPN
+        curTitleID == 0x000500101004E100L || // Health and Safety Information USA
+        curTitleID == 0x000500101004E200L) { // Health and Safety Information EUR
+        isWiiUMenuOrHS = true;
     }
 
-    if (!isWiiUMenu) {
+    if (!isWiiUMenuOrHS) {
         // Set current values based on title xml
-        auto regionForCurrentTitleOpt = getRegionForTitle(OSGetTitleID());
+        auto regionForCurrentTitleOpt = getRegionForTitle(curTitleID);
         if (regionForCurrentTitleOpt) {
             auto region_from_xml = regionForCurrentTitleOpt.value();
             if ((region_from_xml & gCurrentProductArea) == gCurrentProductArea) {
@@ -90,7 +94,7 @@ void SetupRegionSpoofing() {
         // Read per-title settings. Give current lang/region as default values.
         // If we don't have values yet for this title, we only create them if we could get the region for the current title
         bool allowDefaultValues = !forceOpenConfigMenu;
-        auto titleRegionInfoOpt = getTitleRegionInfo(OSGetTitleID(), gCurrentLanguage, gCurrentProductArea, allowDefaultValues);
+        auto titleRegionInfoOpt = getTitleRegionInfo(curTitleID, gCurrentLanguage, gCurrentProductArea, allowDefaultValues);
         if (titleRegionInfoOpt) {
             gCurrentProductArea = titleRegionInfoOpt->product_area;
             gCurrentLanguage    = titleRegionInfoOpt->language;
@@ -107,10 +111,10 @@ void SetupRegionSpoofing() {
         }
     }
 
-    if (forceOpenConfigMenu || (!isWiiUMenu && showMenu)) {
+    if (forceOpenConfigMenu || (!isWiiUMenuOrHS && showMenu)) {
         ConfigUtils::openConfigMenu();
         // Save (updated) title settings to the storage
-        if (!saveTitleRegionInfo({OSGetTitleID(), gCurrentLanguage, gCurrentProductArea})) {
+        if (!saveTitleRegionInfo({curTitleID, gCurrentLanguage, gCurrentProductArea})) {
             DEBUG_FUNCTION_LINE_ERR("Failed to save current title region info to storage");
         } else {
             WUPSStorageError err;
