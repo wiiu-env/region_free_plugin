@@ -4,7 +4,7 @@
 #include <coreinit/mcp.h>
 #include <optional>
 
-#define VERSION      "v0.2.5"
+#define VERSION      "v0.2.6"
 #define VERSION_FULL VERSION VERSION_EXTRA
 
 enum Languages {
