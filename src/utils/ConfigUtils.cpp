@@ -190,9 +190,6 @@ void ConfigUtils::displayMenu() {
     int32_t curRegionIndex = region_map_to_index[curSelectedRegion];
     int32_t curLangIndex   = lang_map_to_index[curSelectedLanguage];
 
-    KPADInit();
-    WPADEnableURCC(true);
-
     while (true) {
         buttonsTriggered = 0;
         buttonsReleased  = 0;
@@ -325,9 +322,6 @@ void ConfigUtils::displayMenu() {
             redraw = false;
         }
     }
-    KPADShutdown();
-    // This disconnects any Pro Controllers...
-    //WPADEnableURCC(false);
 
     DrawUtils::beginDraw();
     DrawUtils::clear(COLOR_BLACK);
@@ -341,6 +335,7 @@ void ConfigUtils::openConfigMenu() {
     uint32_t screen_buf1_size = OSScreenGetBufferSizeEx(SCREEN_DRC);
     void *screenbuffer0       = MEMAllocFromMappedMemoryForGX2Ex(screen_buf0_size, 0x100);
     void *screenbuffer1       = MEMAllocFromMappedMemoryForGX2Ex(screen_buf1_size, 0x100);
+    bool doShutdownKPAD       = false;
 
     if (!screenbuffer0 || !screenbuffer1) {
         DEBUG_FUNCTION_LINE_ERR("Failed to alloc buffers");
@@ -367,7 +362,22 @@ void ConfigUtils::openConfigMenu() {
         goto error_exit;
     }
 
+
+    KPADStatus status;
+    KPADError err;
+    if (KPADReadEx(WPAD_CHAN_0, &status, 0, &err) == 0 && err == KPAD_ERROR_UNINITIALIZED) {
+        doShutdownKPAD = true;
+        KPADInit();
+        WPADEnableURCC(true);
+    }
+
     displayMenu();
+
+    if (doShutdownKPAD) {
+        // This disconnects any Pro Controllers...
+        //WPADEnableURCC(false);
+        KPADShutdown();
+    }
 
     DrawUtils::deinitFont();
 
