@@ -1,6 +1,8 @@
 #include "DrawUtils.h"
+#include "dc.h"
 #include "logger.h"
 #include "utils.h"
+#include <avm/config.h>
 #include <coreinit/cache.h>
 #include <coreinit/memory.h>
 #include <coreinit/screen.h>
@@ -8,16 +10,17 @@
 #include <png.h>
 
 // buffer width
-#define TV_WIDTH  0x500
 #define DRC_WIDTH 0x380
 
 bool DrawUtils::isBackBuffer;
 
-uint8_t *DrawUtils::tvBuffer  = nullptr;
-uint32_t DrawUtils::tvSize    = 0;
-uint8_t *DrawUtils::drcBuffer = nullptr;
-uint32_t DrawUtils::drcSize   = 0;
-static SFT pFont              = {};
+uint8_t *DrawUtils::tvBuffer    = nullptr;
+uint32_t DrawUtils::tvSize      = 0;
+uint8_t *DrawUtils::drcBuffer   = nullptr;
+uint32_t DrawUtils::drcSize     = 0;
+uint32_t DrawUtils::usedTVWidth = 0;
+float DrawUtils::usedTVScale    = 1.5f;
+static SFT pFont                = {};
 
 static Color font_col(0xFFFFFFFF);
 
@@ -26,6 +29,75 @@ void DrawUtils::initBuffers(void *tvBuffer_, uint32_t tvSize_, void *drcBuffer_,
     DrawUtils::tvSize    = tvSize_;
     DrawUtils::drcBuffer = (uint8_t *) drcBuffer_;
     DrawUtils::drcSize   = drcSize_;
+
+    bool bigScale = true;
+    switch (TVEGetCurrentPort()) {
+        case TVE_PORT_HDMI:
+            bigScale = true;
+            break;
+        case TVE_PORT_COMPONENT:
+        case TVE_PORT_COMPOSITE:
+        case TVE_PORT_SCART:
+            bigScale = false;
+            break;
+    }
+
+    AVMTvResolution tvResolution = AVM_TV_RESOLUTION_720P;
+    if (AVMGetTVScanMode(&tvResolution)) {
+        switch (tvResolution) {
+            case AVM_TV_RESOLUTION_480P:
+            case AVM_TV_RESOLUTION_720P:
+            case AVM_TV_RESOLUTION_720P_3D:
+            case AVM_TV_RESOLUTION_1080I:
+            case AVM_TV_RESOLUTION_1080P:
+            case AVM_TV_RESOLUTION_576P:
+            case AVM_TV_RESOLUTION_720P_50HZ:
+            case AVM_TV_RESOLUTION_1080I_50HZ:
+            case AVM_TV_RESOLUTION_1080P_50HZ:
+                bigScale = true;
+                break;
+            case AVM_TV_RESOLUTION_576I:
+            case AVM_TV_RESOLUTION_480I:
+            case AVM_TV_RESOLUTION_480I_PAL60:
+                break;
+        }
+    }
+
+    auto tvScanBufferWidth = DCReadReg32(SCREEN_TV, D1GRPH_X_END_REG);
+
+    if (tvScanBufferWidth == 640) { // 480i/480p/576i 4:3
+        DrawUtils::usedTVWidth = 640;
+        SetDCPitchReg(SCREEN_TV, 640);
+        DrawUtils::usedTVScale = bigScale ? 0.75 : 0.75f;
+    } else if (tvScanBufferWidth == 854) { // 480i/480p/576i 16:9
+        DrawUtils::usedTVWidth = 896;
+        SetDCPitchReg(SCREEN_TV, 896);
+        DrawUtils::usedTVScale = bigScale ? 1.0 : 1.0f;
+    } else if (tvScanBufferWidth == 1280) { // 720p 16:9
+        DrawUtils::usedTVWidth = 1280;
+        SetDCPitchReg(SCREEN_TV, 1280);
+        if (bigScale) {
+            DrawUtils::usedTVScale = 1.5;
+        } else {
+            DrawUtils::usedTVScale = 0.75f;
+            if (tvResolution == AVM_TV_RESOLUTION_480I_PAL60 || tvResolution == AVM_TV_RESOLUTION_480I) {
+                AVMTvAspectRatio tvAspectRatio;
+                if (AVMGetTVAspectRatio(&tvAspectRatio) && tvAspectRatio == AVM_TV_ASPECT_RATIO_16_9) {
+                    DEBUG_FUNCTION_LINE_WARN("force big scaling for 480i + 16:9");
+                    DrawUtils::usedTVScale = 1.5;
+                }
+            }
+        }
+    } else if (tvScanBufferWidth == 1920) { // 1080i/1080p 16:9
+        DrawUtils::usedTVWidth = 1920;
+        SetDCPitchReg(SCREEN_TV, 1920);
+        DrawUtils::usedTVScale = bigScale ? 2.25 : 1.125f;
+    } else {
+        DrawUtils::usedTVWidth = tvScanBufferWidth;
+        SetDCPitchReg(SCREEN_TV, tvScanBufferWidth);
+        DrawUtils::usedTVScale = 1.0f;
+        DEBUG_FUNCTION_LINE_WARN("Unknown tv width detected, config menu might not show properly");
+    }
 }
 
 void DrawUtils::beginDraw() {
@@ -77,17 +149,10 @@ void DrawUtils::drawPixel(uint32_t x, uint32_t y, uint8_t r, uint8_t g, uint8_t 
         }
     }
 
-    uint32_t USED_TV_WIDTH = TV_WIDTH;
-    float scale            = 1.5f;
-    if (DrawUtils::tvSize == 0x00FD2000) {
-        USED_TV_WIDTH = 1920;
-        scale         = 2.25f;
-    }
-
     // scale and put pixel in the tv buffer
-    for (uint32_t yy = (y * scale); yy < ((y * scale) + (uint32_t) scale); yy++) {
-        for (uint32_t xx = (x * scale); xx < ((x * scale) + (uint32_t) scale); xx++) {
-            uint32_t i = (xx + yy * USED_TV_WIDTH) * 4;
+    for (uint32_t yy = (y * DrawUtils::usedTVScale); yy < ((y * DrawUtils::usedTVScale) + (uint32_t) DrawUtils::usedTVScale); yy++) {
+        for (uint32_t xx = (x * DrawUtils::usedTVScale); xx < ((x * DrawUtils::usedTVScale) + (uint32_t) DrawUtils::usedTVScale); xx++) {
+            uint32_t i = (xx + yy * DrawUtils::usedTVWidth) * 4;
             if (i + 3 < tvSize / 2) {
                 if (isBackBuffer) {
                     i += tvSize / 2;
